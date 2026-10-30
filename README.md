@@ -1,6 +1,6 @@
 **In short:** HPX-SCP keeps people responsible for what the rules mean, tools responsible for checking their integrity, and agents focused on the minimum verified instructions they need.
 
-# Hypergraph PX Semantic Communication Protocol (HPX-SCP) — Minimum Sufficient Protocol
+# HPX Minimum Sufficient Semantic Communication Protocol (HPX-msSCP)
 
 **Clearer coordination between development agents, with less context to carry.**
 
