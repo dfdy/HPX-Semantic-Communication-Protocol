@@ -1,0 +1,26 @@
+## HPX-SCP v0.5: Minimum Sufficient Protocol
+
+The human-readable portion of `docs/engineering/semantic-protocol/PROTOCOL.md` is **canonical, not an agent prompt**. Do not insert it or the complete semantic appendix into model context. Retrieve only a verified, task-specific semantic packet through the standalone verifier:
+
+```bash
+python3 scripts/protocol_context.py --for implement
+# For an implementation record:
+python3 scripts/protocol_context.py --for implement --record-type implementation_evidence
+# For protocol amendments:
+python3 scripts/protocol_context.py --for amend --for records --record-type protocol_change
+```
+
+Every emitted packet includes `kernel` and `baseline`. Add further scopes when needed (`plan`, `implement`, `verify`, `handoff`, `records`, `amend`, `preflight` (verifier maintenance only)). The verifier checks the two region SHA-256 digests, deterministic machine projection correspondence, and framing **outside the language-model context**. Never load unverified semantic material or use the canonical prose as normal prompting fallback; on failure, stop protocol-driven work and request authorised repair. Avoid loading unrelated records; link them by stable IDs and resolve when necessary. Ordinary dialogue need not become a formal record.
+
+Only the natural-language policy can be edited as a normative source. Compatible amendments may be applied by agents within standing delegation after canonical-text editing, deterministic regeneration, and tests. Breaking, authority, kernel, security, and governance amendments require owner approval. Do not fabricate authority, permission, implementation evidence, or test results. The protocol grants no additional machine permissions and does not supersede HPX requirements.
+
+For a permitted maintenance change:
+
+```bash
+python3 scripts/rebuild_semantic_appendix.py
+python3 scripts/bootstrap_semantic_protocol.py
+python3 scripts/validate_semantic_records.py
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+After compaction or resume, recover via `python3 scripts/protocol_recovery.py recover --session <session-id> --for <scope>`, then reconcile saved state with the actual repository; checkpoints are non-authoritative. Every compatible, applied protocol extension must be integrated into the canonical prose and discoverable in the shared amendment registry.
