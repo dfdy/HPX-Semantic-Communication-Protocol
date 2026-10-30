@@ -85,8 +85,8 @@ After context compaction or session recovery, agents reverify the protocol, relo
 
 ## Where to look
 
-- [`docs/engineering/semantic-protocol/PROTOCOL.md`](docs/engineering/semantic-protocol/PROTOCOL.md) — the source of authority: Markdown rules, YAML appendix and integrity manifest.
-- [`AGENTS.md.fragment`](AGENTS.md.fragment) — the short entry point for repository agents, avoiding pasted protocol text.
-- [`scripts/`](scripts/) — verification, scoped loading, recovery, amendments and validation outside model context.
-- [`tests/`](tests/) — checks that changes do not silently break integrity or compatibility.
-- [`CHANGELOG.md`](CHANGELOG.md) — why and how the protocol has evolved.
+- [`docs/engineering/semantic-protocol/PROTOCOL.md`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/blob/main/docs/engineering/semantic-protocol/PROTOCOL.md) — the source of authority: Markdown rules, YAML appendix and integrity manifest.
+- [`AGENTS.md.fragment`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/blob/main/AGENTS.md.fragment) — the short entry point for repository agents, avoiding pasted protocol text.
+- [`scripts/`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/tree/main/scripts) — verification, scoped loading, recovery, amendments and validation outside model context.
+- [`tests/`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/tree/main/tests) — checks that changes do not silently break integrity or compatibility.
+- [`CHANGELOG.md`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/blob/main/CHANGELOG.md) — why and how the protocol has evolved.
