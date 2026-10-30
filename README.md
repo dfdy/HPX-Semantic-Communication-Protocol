@@ -1,48 +1,92 @@
-# HPX-SCP v0.5.0 — Minimum Sufficient Protocol
+**In short:** HPX-SCP keeps people responsible for what the rules mean, tools responsible for checking their integrity, and agents focused on the minimum verified instructions they need.
 
-**Proposed, not yet adopted.** Human-readable text is the sole canonical policy; the appended machine representation is subordinate and is never injected wholesale into an agent prompt.
+# Hypergraph PX Semantic Communication Protocol (HPX-SCP) — Minimum Sufficient Protocol
 
-## Purpose
+**Clearer coordination between development agents, with less context to carry.**
 
-Minimise repeated context and interpretation across development agents while retaining human-readable oversight and exact source authority. A standalone verifier reads and hashes canonical prose **outside model context**, verifies the derived semantic representation, and emits only scoped semantic instructions to the requesting agent.
+**Status:** v0.5.0 — adopted for HPX engineering communication by the project owner on 2026-10-31.  
+**Scope:** Coordination between agents developing Hypergraph PX (HPX), not HPX's runtime data model.
 
-## Usage
+## Adoption and authority
 
-From the repository root:
+HPX's owner explicitly adopted the installed v0.5.0 policy. Existing HPX specifications, owner decisions and narrower repository restrictions remain in force. Adoption grants no additional tool permissions, product-design acceptance or publication authority. Other projects must make their own adoption decision; installing or verifying the kit alone is not approval.
+
+## Why it exists
+
+HPX is being developed by agents that plan, implement, review and hand work to one another. Passing entire specifications or long conversations between them consumes context, repeats information and leaves room for different interpretations. When an agent's context is compacted, important instructions may also be lost or distorted.
+
+The **Hypergraph PX Semantic Communication Protocol (HPX-SCP)** gives agents a shared way to describe requirements, decisions, implementation evidence, verification, issues and handoffs. The goal is **minimum sufficient context**: use as little context as possible *without losing the instructions needed to do the work correctly*.
+
+## The idea in one minute
+
+**People maintain the canonical Markdown specification. Tools verify it. Agents receive only relevant, verified YAML.**
+
+```text
+PROTOCOL.md
+  canonical human-readable rules   <- people can inspect and amend them
+  appended semantic YAML           <- agents can consume them consistently
+  integrity manifest               <- detects unsynchronised changes
+         |
+         v
+independent bootstrap verifier     <- checks before agents trust the YAML
+  validates both SHA-256 hashes
+  checks deterministic YAML correspondence
+         |
+         v
+minimum sufficient YAML packet     <- only the rules needed for this task
+         |
+         v
+agent
+```
+
+**Why keep Markdown canonical?** The protocol governs how agents work, so its meaning must remain understandable and controllable by a person. YAML is a machine-oriented representation of those rules, not a competing authority.
+
+**Why bootstrap?** An agent should not have to read the whole specification—or trust a potentially stale YAML appendix—just to begin work. A small verifier checks the two complete portions outside the model's context: one SHA-256 digest for the human-readable text, one for the YAML. It also checks that the YAML corresponds to the prose through deterministic regeneration. If verification fails, **no protocol packet is loaded**. The hashes themselves stay out of routine agent prompts.
+
+**Why a tiny kernel?** The protocol needs enough fixed rules to know *who* an instruction belongs to, *which version* applies, *what has authority*, *whether it is valid*, and *how it may be amended*. Keeping these five concerns—identity, versioning, authority, validation and amendments—small avoids a circular dependency on the very protocol being checked.
+
+The hashes detect accidental divergence; they do not prove who authorised an edit. Repository permissions and review procedures still provide that protection.
+
+## Try it
+
+From the repository root, after installing the kit's dependencies:
 
 ```bash
+# Check both representations before trusting either one
 python3 scripts/bootstrap_semantic_protocol.py
+
+# Load only the verified rules relevant to implementation
 python3 scripts/protocol_context.py --for implement
-python3 scripts/protocol_context.py --for verify --record-type verification_result
-python3 scripts/protocol_context.py --for handoff --record-type handoff
-python3 scripts/protocol_context.py --for amend --record-type protocol_change
+
+# Add a specific record contract when the task needs it
+python3 scripts/protocol_context.py --for implement --for records \
+  --record-type implementation_evidence
 ```
 
-All packets include the kernel and baseline. The loader emits scoped, indented YAML with only relevant rule IDs/directives and requested record/relation definitions. The full natural-language source **is never printed**. An agent can request more scopes when needed; minimum context never permits missing authoritative constraints.
+The repository's `AGENTS.md` should point to these commands rather than reproduce the specification. **Why?** Duplicated instructions waste tokens and can become outdated. An agent can request more verified scopes when needed; smaller context must never mean omitting an applicable constraint.
 
-## Adoption
+## What agents exchange
 
-1. Review this proposed governance revision before activation, since it replaces v0.3's bootstrap/projection and normal agent-loading policy.
-2. Copy the kit into HPX without overwriting independent authoritative files; merge `AGENTS.md.fragment` into existing agent guidance.
-3. Install `python3 -m pip install 'jsonschema>=4.18,<5' 'PyYAML>=6,<7'`, then run the bootstrap and tests.
-4. Retain existing v0.1.0–v0.3.0 records without rewriting their `protocol_version`.
-5. Restrict repository ownership of the canonical policy and verifier; optionally provide `--trusted-sha256` or owner-managed `HPX_SCP_TRUSTED_SHA256` outside the writable repository.
+Durable records describe `requirement`, `proposal`, `decision`, `implementation_evidence`, `verification_result`, `issue`, `handoff` and `protocol_change`. Each has a stable identity, declared authority and typed relationships. **Why?** Agents can refer to the same decision or test evidence without repeatedly summarising it, and they can distinguish an approved requirement from a suggestion or an observation.
 
-If an existing consumer still requires JSON packets, use `--format json`. Historical JSON record files remain unchanged.
+**YAML is the standard format for semantic instructions and agent packets** because it is structured and easy to inspect. Existing durable records remain supported as schema-validated JSON for compatibility; JSON is not an alternative protocol-instruction format.
 
-## Amendments
+## Keeping the protocol current
 
-Edit canonical prose first; then regenerate the appendix and test:
+Agents may introduce **small, backward-compatible extensions** when the existing vocabulary is insufficient. They must first amend the canonical prose, regenerate the YAML and integrity manifest, run checks, record the amendment and publish it to the shared amendment registry.
 
-```bash
-python3 scripts/rebuild_semantic_appendix.py
-python3 scripts/bootstrap_semantic_protocol.py
-python3 scripts/validate_semantic_records.py
-python3 -m unittest discover -s tests -p 'test_*.py'
-```
+**Why allow this?** Agents encounter communication needs that the original designers may not anticipate. **Why require a shared registry?** Without it, different agents could silently develop incompatible local conventions. Changes to established meanings, security, approval rules, the bootstrap kernel or human-readable canonicality still require **explicit owner approval**; the protocol never grants additional tool or repository permissions.
 
-Only compatible changes are delegated; breaking or governance changes require owner approval. Matching manifest hashes establish integrity, and deterministic regeneration establishes correspondence; neither establishes author authenticity. This protocol is an engineering communication convention, not HPX runtime schema, permission escalation, or a replacement for application specifications.
+## Surviving context compaction
 
-## Minimal dual-hash gate
+After context compaction or session recovery, agents reverify the protocol, reload the relevant YAML packet and reconcile their task state with persistent evidence. A compact handoff helps recover progress but does not replace authoritative records.
 
-`PROTOCOL.md` contains canonical Markdown, a derived semantic YAML appendix, and an external integrity manifest with exactly **two** SHA-256 values (one for each region). The verifier checks both digests and regenerates the expected machine YAML from canonical prose; no section or rule has its own hash. Hashes are never emitted into ordinary agent packets.
+**Why?** Conversation summaries are useful working memory, not a reliable source of governing instructions. Recovery must work even when the agent cannot remember the previous session accurately.
+
+## Where to look
+
+- [`docs/engineering/semantic-protocol/PROTOCOL.md`](docs/engineering/semantic-protocol/PROTOCOL.md) — the source of authority: Markdown rules, YAML appendix and integrity manifest.
+- [`AGENTS.md.fragment`](AGENTS.md.fragment) — the short entry point for repository agents, avoiding pasted protocol text.
+- [`scripts/`](scripts/) — verification, scoped loading, recovery, amendments and validation outside model context.
+- [`tests/`](tests/) — checks that changes do not silently break integrity or compatibility.
+- [`CHANGELOG.md`](CHANGELOG.md) — why and how the protocol has evolved.
