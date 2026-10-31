@@ -1,8 +1,8 @@
 {
   "package": "HPX-SCP",
-  "version": "0.6.0",
-  "source_archive": "hpx-semantic-communication-protocol-v0.6.0.zip",
-  "source_archive_sha256": "5d94f32ff98a1ee67246c10c7bc12d70ae0cafd448551223da5059a2c58411cf",
+  "version": "0.6.1",
+  "source_archive": "hpx-semantic-communication-protocol-v0.6.1.zip",
+  "source_archive_sha256": "3304da9a1ccd91a7dc69be3a8e9aa003d09f91642a3c72e22997741e8bd7485c",
   "files": [
     {
       "path": ".github/workflows/validate-semantic-records.yml",
@@ -10,19 +10,19 @@
     },
     {
       "path": "AGENTS.md.fragment",
-      "sha256": "11e9f1c541a8589ba149f0fd6fc50583eb7365e625e7f942a9c6f08542091567"
+      "sha256": "4bd33a3adf9c00d692c126d717d1ab96e947a44421b9f65e4f5cabe55ea2b2b3"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "64451a98360c1a4d0d34565c7d0a3b14cd03b02a490f278b2460880321ca7942"
+      "sha256": "59397ecca393b61315660412ad5e24b4c72f24d0184a2a5abad09ce249ce459f"
     },
     {
       "path": "INSTALL_PROMPT.md",
-      "sha256": "1738af3f94916df18ab36bc4d687130da52d30406793a8710931007d3c254d89"
+      "sha256": "ce7adbce6d5f051b7149a9f685e53fc03b681b75881c036ba3b7c154dcf9cd51"
     },
     {
       "path": "README.md",
-      "sha256": "077343540406ca942d4992ebbd024abcf6a3768182ca9f0974c15e0d50b580a1"
+      "sha256": "0bf48e6c7af89165562c6a1ad6a3a836b49d956373656e82aff0052d41b5f024"
     },
     {
       "path": "docs/engineering/semantic-protocol/.gitattributes",
@@ -30,11 +30,11 @@
     },
     {
       "path": "docs/engineering/semantic-protocol/PROTOCOL.md",
-      "sha256": "f1fa99a3970212b4fc3cd6dc1b99422d4ddd76a2bee64727a90506e960cb5234"
+      "sha256": "7b4159678c466ca7c347a87f49dde4a0eb4bb051e1a44d8dd13ed7c31e3ba69f"
     },
     {
       "path": "docs/engineering/semantic-protocol/amendments/registry.json",
-      "sha256": "43cf5baf4e685f47732dffd092759fdc36b4b9e4b003c91d11c0867d7d8e4454"
+      "sha256": "cd1e7c51aba836109d940b0f5664228ba818d0ff08079728bca52ee4f4d32893"
     },
     {
       "path": "docs/engineering/semantic-protocol/examples/HPX-HANDOFF-20261030-architecture-verification.json",
@@ -102,7 +102,7 @@
     },
     {
       "path": "scripts/scp_wire.py",
-      "sha256": "45a02b1a5be97d2decb1cc30c8a925fd4c3e92e6b7324f64e16ce879bc613b60"
+      "sha256": "7766a2b302bd94470b498707cc3e103e49ddc328f0ee703963e23414a7fe5099"
     },
     {
       "path": "scripts/validate_semantic_records.py",
@@ -110,15 +110,15 @@
     },
     {
       "path": "tests/test_bootstrap_semantic_protocol.py",
-      "sha256": "6fb792305dd5e36d0657e81437ed98161c4fbf6b40117747b3570093d23a187e"
+      "sha256": "21899344da2da23a4e08aec4c7c4937510fd2a543afaf019174f5e6ef9513ed0"
     },
     {
       "path": "tests/test_recovery_and_amendments.py",
-      "sha256": "358316f2798a86b90758c2a0794340eb9908d25107377c1e9e96a06eddf897f9"
+      "sha256": "04ba1d404cbdf4c3e5b2d5e57cca8397d93685b1fbb2167b34c7d3e4a0250831"
     },
     {
       "path": "tests/test_scp_wire.py",
-      "sha256": "12dd07d350f2d09c7c4863bb434aab49c6c769deca0b1ad39fd9d2e8ce4d62a1"
+      "sha256": "3b06ee815c6d3f6f4cb678158c78c2580a40d54c70877ab9fb9c2be9099afd81"
     },
     {
       "path": "tests/test_semantic_records.py",

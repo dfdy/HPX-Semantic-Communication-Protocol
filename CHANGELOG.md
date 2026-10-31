@@ -1,5 +1,14 @@
 # HPX-SCP change history
 
+## 0.6.1 — Inline YAML prompting (proposed)
+
+- Corrects v0.6.0's reference implementation, which encouraged exchanging `.yaml` paths instead of the actual message contents.
+- Requires **complete inline YAML envelopes and bodies** in both directions, including discovery control messages; pointer-only prompts are not conforming.
+- Changes the CLI default to stdin/stdout for message exchange and outputs the validated message itself from `receive`; local files remain optional I/O adapters.
+- Retains out-of-band files only for protocol installation bundles and external supporting material.
+- Adds live-text exchange tests alongside file-adapter compatibility tests; retains the canonical-prose/two-hash bootstrap.
+
+
 ## 0.6.0 — Inter-agent prompting correction (proposed)
 
 - Reorients HPX-SCP around **discovery, propagation, readiness negotiation and bidirectional YAML prompting**. Prior framing primarily concerned scoped instructions and durable records; those mechanisms now support inter-agent exchange.

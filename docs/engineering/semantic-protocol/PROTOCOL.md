@@ -1,6 +1,6 @@
 # HPX Semantic Communication Protocol (HPX-SCP)
 
-**Version:** 0.6.0  
+**Version:** 0.6.1  
 **Status:** proposed integration package; this user-directed architectural correction is authorised for preparation, but repository adoption remains separate.  
 **Purpose:** Establish a shared, verified YAML prompting language between agents, then exchange minimum-sufficient requests and responses bidirectionally; retain human authority, low context use, provenance and continuity.
 
@@ -10,7 +10,7 @@
 
 **SCP-WIRE-TRIGGER [negotiation]:** An agent instructed to use HPX-SCP with another agent MUST initiate protocol discovery even if the recipient is not known to support HPX-SCP. It MUST NOT assume shared protocol knowledge or proceed with an ordinary HPX-SCP request before readiness is established.
 
-**SCP-WIRE-CHANNEL [baseline]:** HPX-SCP specifies message content and protocol-state transitions, not an agent invocation, network service, transport security or tool permission. Agents require an actual permitted communication channel; the reference CLI implements file-based exchanges only.
+**SCP-WIRE-CHANNEL [baseline]:** HPX-SCP defines direct YAML message content and protocol-state transitions, not an agent invocation, network service, transport security or tool permission. Agents require an actual permitted communication channel carrying the literal YAML message text; the reference CLI validates and emits text through standard input/output, with local files supported as adapters only.
 
 ## 1. Discovery, propagation and negotiation
 
@@ -39,6 +39,10 @@
 **SCP-MSG-005 [exchange]:** The peer may request additional verified protocol scopes without redefining the message grammar. Structured YAML is for inter-agent messages; direct communication with humans remains ordinary natural language unless explicitly requested otherwise.
 
 **SCP-MSG-006 [exchange]:** The sender and recipient MUST both validate outbound and inbound messages using their own verified protocol. A YAML message is a structured claim, not proof of authorisation, execution, identity or delivery; provenance and actual tool evidence remain separate.
+
+**SCP-MSG-007 [exchange]:** Every HPX-SCP-governed agent-to-agent prompt, reply and control message MUST carry its complete YAML envelope and message body inline as the text actually delivered to the other agent. A filename, file path, URI, link, attachment pointer or instruction to read a YAML file MUST NOT substitute for the YAML message. Agents may reference external source materials and transfer protocol installation bundles out of band, but not delegate the prompting content of ordinary messages to linked YAML files. If the permitted channel cannot convey inline message text, report the limitation and do not claim an HPX-SCP exchange occurred.
+
+**SCP-MSG-008 [exchange]:** File-backed local validation is permitted, but transport adapters MUST expose the validated YAML message itself to the receiving agent, never just a file location, delivery receipt or summary. When requesting or receiving a task, the actual YAML body MUST contain the task instruction; a pointer to another YAML prompt is nonconforming.
 
 ### 1.2 Message envelope fields
 
@@ -251,7 +255,7 @@
 <!-- HPX-SCP:SEMANTIC-APPENDIX-BEGIN v4 -->
 ```yaml
 HPX-SCP:
-  version: 0.6.0
+  version: 0.6.1
   format: 4
   authority: canonical_natural_language_only
   scopes:
@@ -274,9 +278,9 @@ HPX-SCP:
       SCP-WIRE-PURPOSE: 'HPX-SCP is primarily a bidirectional inter-agent prompting protocol: establish a shared verified YAML language, then
         exchange task requests, responses, clarifications, errors, handoffs and amendment notices with minimum sufficient context. Verification,
         records, compaction recovery and amendments support this exchange rather than replace it.'
-      SCP-WIRE-CHANNEL: HPX-SCP specifies message content and protocol-state transitions, not an agent invocation, network service, transport
-        security or tool permission. Agents require an actual permitted communication channel; the reference CLI implements file-based exchanges
-        only.
+      SCP-WIRE-CHANNEL: HPX-SCP defines direct YAML message content and protocol-state transitions, not an agent invocation, network service,
+        transport security or tool permission. Agents require an actual permitted communication channel carrying the literal YAML message text;
+        the reference CLI validates and emits text through standard input/output, with local files supported as adapters only.
       SCP-PRIME-001: The human-readable part of this document, ending immediately before the unique semantic-appendix delimiter, is the sole canonical
         HPX-SCP policy. The appended semantic projection, schemas, validator, records, and summaries are subordinate. Conflicts are reported and
         settled in favour of canonical text.
@@ -345,6 +349,14 @@ HPX-SCP:
         messages; direct communication with humans remains ordinary natural language unless explicitly requested otherwise.
       SCP-MSG-006: The sender and recipient MUST both validate outbound and inbound messages using their own verified protocol. A YAML message
         is a structured claim, not proof of authorisation, execution, identity or delivery; provenance and actual tool evidence remain separate.
+      SCP-MSG-007: Every HPX-SCP-governed agent-to-agent prompt, reply and control message MUST carry its complete YAML envelope and message body
+        inline as the text actually delivered to the other agent. A filename, file path, URI, link, attachment pointer or instruction to read
+        a YAML file MUST NOT substitute for the YAML message. Agents may reference external source materials and transfer protocol installation
+        bundles out of band, but not delegate the prompting content of ordinary messages to linked YAML files. If the permitted channel cannot
+        convey inline message text, report the limitation and do not claim an HPX-SCP exchange occurred.
+      SCP-MSG-008: File-backed local validation is permitted, but transport adapters MUST expose the validated YAML message itself to the receiving
+        agent, never just a file location, delivery receipt or summary. When requesting or receiving a task, the actual YAML body MUST contain
+        the task instruction; a pointer to another YAML prompt is nonconforming.
     records:
       SCP-RECORD-001: Persistent records are UTF-8 JSON with no duplicate keys, one object per `records/<id>.json`, validated against local Draft
         2020-12 JSON Schema. Sketches and ordinary discussion do not automatically become records.
@@ -626,6 +638,6 @@ HPX-SCP:
 ```
 <!-- HPX-SCP:INTEGRITY-MANIFEST-BEGIN v4 -->
 ```yaml
-natural_sha256: db86a5895aecc7f241fed033e4e0547bd7422d22c5135b586532a70239cac725
-machine_sha256: 6c24ea928b9674f643e2772a9fa5500493b1bebdb5e0a686748fd14c9458fab1
+natural_sha256: 01f7eddba8d9d5707fb715a4cf3fd09032198a2eaa9c113f7228d81f5e3f0e41
+machine_sha256: 098acd10c355a4419e3cef456ef82139f73170e8e9774d27bb5787693df6c4f8
 ```

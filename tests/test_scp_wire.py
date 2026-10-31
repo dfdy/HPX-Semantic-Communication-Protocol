@@ -29,9 +29,9 @@ class WireTests(unittest.TestCase):
         self.state_a=self.base/'a'
         self.state_b=self.base/'b'
 
-    def run_wire(self,action,*args,state=None,ok=True):
+    def run_wire(self,action,*args,state=None,ok=True,stdin=None):
         cmd=[sys.executable,str(ROOT/'scripts'/'scp_wire.py'),action,'--state-dir',str(state or self.state_a)]+list(args)
-        process=subprocess.run(cmd,text=True,capture_output=True)
+        process=subprocess.run(cmd,text=True,capture_output=True,input=stdin)
         if ok:
             self.assertEqual(process.returncode,0,process.stderr)
         else:
@@ -55,7 +55,10 @@ class WireTests(unittest.TestCase):
         self.run_wire('send','--sender','architect','--recipient','implementer','--conversation','thread-1',
                       '--kind','request','--body-file',str(body),'--output',str(request))
         recv=self.run_wire('receive','--local','implementer','--input',str(request),state=self.state_b)
-        self.assertIn('VALIDATED YAML REQUEST',recv.stdout)
+        received=yaml.safe_load(recv.stdout)
+        self.assertEqual(received['kind'],'request')
+        self.assertEqual(received['body']['target'],'ClosedComposition')
+        self.assertNotIn(str(request),recv.stdout)
         request_id=yaml.safe_load(request.read_text())['id']
         result_body=self.base/'result.yaml';result_body.write_text('status: completed\nverified: [unit-test-1]\n')
         result=self.base/'response.yaml'
@@ -68,6 +71,51 @@ class WireTests(unittest.TestCase):
         self.assertEqual(sent['reply_to'],request_id)
         self.assertNotIn('sha256',request.read_text())
         self.assertNotIn(self.digest,request.read_text())
+
+    def test_inline_yaml_transport_without_files(self):
+        # These are literal YAML strings delivered in a hypothetical agent channel.
+        # No ordinary task message file is necessary.
+        hello=self.run_wire('hello','--sender','architect','--recipient','implementer',
+                            '--conversation','inline-thread')
+        self.assertEqual(yaml.safe_load(hello.stdout)['kind'],'hello')
+        ready=self.run_wire('answer-hello','--local','implementer',state=self.state_b,
+                            stdin=hello.stdout)
+        self.assertEqual(yaml.safe_load(ready.stdout)['kind'],'ready')
+        self.run_wire('accept-ready','--local','architect',stdin=ready.stdout)
+        request=self.run_wire('send','--sender','architect','--recipient','implementer',
+                              '--conversation','inline-thread','--kind','request',
+                              stdin='action: implement\ntarget: ClosedComposition\n')
+        decoded=yaml.safe_load(request.stdout)
+        self.assertEqual(decoded['body']['action'],'implement')
+        self.assertEqual(decoded['body']['target'],'ClosedComposition')
+        self.assertNotIn('WRITTEN:',request.stdout)
+        self.assertNotIn('request.yaml',request.stdout)
+        received=self.run_wire('receive','--local','implementer',state=self.state_b,
+                               stdin=request.stdout)
+        self.assertEqual(yaml.safe_load(received.stdout),decoded)
+        response=self.run_wire('send','--sender','implementer','--recipient','architect',
+                               '--conversation','inline-thread','--kind','response',
+                               '--reply-to',decoded['id'],state=self.state_b,
+                               stdin='status: completed\nsummary: Implemented requested change\n')
+        echoed=self.run_wire('receive','--local','architect',stdin=response.stdout)
+        self.assertEqual(yaml.safe_load(echoed.stdout)['body']['status'],'completed')
+
+    def test_link_to_yaml_prompt_is_not_a_request(self):
+        self.connect()
+        # A pointer cannot replace the required task instruction.
+        rejected=self.run_wire('send','--sender','architect','--recipient','implementer',
+                               '--conversation','thread-1','--kind','request',
+                               stdin='message_file: ./another-prompt.yaml\n',ok=False)
+        self.assertIn('missing required message body: action',rejected.stderr)
+        self.assertEqual(rejected.stdout,'')
+
+    def test_validation_failure_stays_out_of_inline_output(self):
+        self.connect()
+        rejected=self.run_wire('send','--sender','architect','--recipient','implementer',
+                               '--conversation','thread-1','--kind','request',
+                               stdin='action: implement\naction: delete\ntarget: anything\n',ok=False)
+        self.assertEqual(rejected.stdout,'')
+        self.assertIn('duplicate YAML key',rejected.stderr)
 
     def test_cannot_send_before_ready(self):
         body=self.base/'b.yaml';body.write_text('action: implement\ntarget: X\n')

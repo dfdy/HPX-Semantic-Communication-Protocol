@@ -29,7 +29,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(self.manifest['machine_sha256'], hashlib.sha256(self.machine_bytes).hexdigest())
         self.assertEqual(set(self.appendix), {'HPX-SCP'})
         self.assertEqual(self.appendix['HPX-SCP']['format'], 4)
-        self.assertEqual(self.projection['protocol_version'], '0.6.0')
+        self.assertEqual(self.projection['protocol_version'], '0.6.1')
         self.assertEqual(len(self.projection['record_types']), 8)
         self.assertIn('implements',self.appendix['HPX-SCP']['relationships'])
         self.assertIn('request', self.appendix['HPX-SCP']['message_types'])
@@ -92,7 +92,7 @@ class BootstrapTests(unittest.TestCase):
                     gate.verify_document(bad)
 
     def test_custom_yaml_tags_block(self):
-        bad=self.data.replace(b'  version: 0.6.0\n', b'  version: !python/object/a.b.C 0.5.0\n',1)
+        bad=self.data.replace(b'  version: 0.6.1\n', b'  version: !python/object/a.b.C 0.5.0\n',1)
         with self.assertRaises(gate.BootstrapError):
             gate.verify_document(bad)
 
@@ -116,7 +116,7 @@ class BootstrapTests(unittest.TestCase):
         with self.assertRaises(gate.BootstrapError):
             gate.verify_document(bad)
         repaired=writer.rebuild_bytes(bad)
-        self.assertEqual(gate.verify_document(repaired)['protocol_version'],'0.6.0')
+        self.assertEqual(gate.verify_document(repaired)['protocol_version'],'0.6.1')
         self.assertNotEqual(repaired,self.data)
 
     def test_untagged_natural_prose_blocks(self):

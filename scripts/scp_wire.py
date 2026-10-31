@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""HPX-SCP reference file transport: establish a shared verified protocol, then exchange YAML.
+"""HPX-SCP reference message validator and stdin/stdout YAML adapter.
 
-All operations verify the local human-canonical protocol outside model context. This
-is not an agent runner, a secure transport, or a substitute for access controls.
+SCP prompts and replies must be sent as literal YAML through a permitted agent
+channel. Local files are optional validation adapters, not prompt substitutes.
+Verification runs outside model context. Not an agent runner or secure transport.
 """
 from __future__ import annotations
 import argparse
@@ -170,10 +171,25 @@ def require_active(root: Path, msg: dict, local: str, outgoing: bool, expected_f
     return session
 
 
-def write_yaml(path: Path, msg: dict) -> None:
+def read_input(path: Path) -> bytes:
+    if str(path) == '-':
+        raw = sys.stdin.buffer.read(MAX_MESSAGE_BYTES + 1)
+        if len(raw) > MAX_MESSAGE_BYTES:
+            raise BootstrapError('input message exceeds size limit')
+        return raw
+    return path.read_bytes()
+
+
+def write_yaml(path: Path, msg: dict) -> bool:
+    """Output the *actual YAML*. True means stdout; never mix status with YAML."""
+    data = yaml_bytes(msg)
+    if str(path) == '-':
+        sys.stdout.buffer.write(data)
+        return True
     if path.exists() or path.is_symlink():raise BootstrapError('refusing to overwrite existing message')
     path.parent.mkdir(parents=True,exist_ok=True)
-    path.write_bytes(yaml_bytes(msg))
+    path.write_bytes(data)
+    return False
 
 
 def run(args):
@@ -187,10 +203,10 @@ def run(args):
         validate_message(msg,projection)
         s=state_new(msg,args.sender,args.recipient,fp,'awaiting_ready')
         state_write(state,s)
-        write_yaml(args.output,msg)
-        return f'DISCOVERY HELLO CREATED: {args.output} (fingerprint is control metadata, not agent prompt)'
+        stdout=write_yaml(args.output,msg)
+        return None if stdout else f'DISCOVERY HELLO CREATED: {args.output} (send YAML content, not this path)'
     if action=='answer-hello':
-        hello=validate_message(args.input.read_bytes(),projection,compatible=False)
+        hello=validate_message(read_input(args.input),projection,compatible=False)
         if hello['kind']!='hello' or hello['recipient']!=args.local:
             raise BootstrapError('expected hello addressed to local agent')
         match=hello['version']==ver and hello['body']['fingerprint']==fp
@@ -202,10 +218,10 @@ def run(args):
             s=state_new(hello,args.local,hello['sender'],fp,'ready')
             s['seen'].append(reply['id'])
             state_write(state,s)
-        write_yaml(args.output,reply)
-        return ('READY' if match else 'NEED PROTOCOL BUNDLE')+f': {args.output}'
+        stdout=write_yaml(args.output,reply)
+        return None if stdout else ('READY' if match else 'NEED PROTOCOL BUNDLE')+f': {args.output}'
     if action=='accept-ready':
-        response=validate_message(args.input.read_bytes(),projection,compatible=False)
+        response=validate_message(read_input(args.input),projection,compatible=False)
         if response['kind'] not in ('ready','need') or response['recipient']!=args.local:
             raise BootstrapError('expected ready/need addressed to local agent')
         s=state_read(state,response['conversation'],args.local,response['sender'])
@@ -222,14 +238,18 @@ def run(args):
     if action=='offer':
         msg=new_message('offer',args.sender,args.recipient,args.conversation,ver,{'bundle_ref':args.bundle_ref},args.reply_to)
         validate_message(msg,projection)
-        write_yaml(args.output,msg)
-        return f'PROTOCOL OFFER CREATED: {args.output}'
+        stdout=write_yaml(args.output,msg)
+        return None if stdout else f'PROTOCOL OFFER CREATED: {args.output}'
     if action=='bundle':
+        if str(args.output)=='-':
+            raise BootstrapError('protocol bundles require a real output file, not inline task YAML')
         if args.output.exists():raise BootstrapError('refusing to overwrite bundle')
         with zipfile.ZipFile(args.output,'x',compression=zipfile.ZIP_DEFLATED) as z:
             z.writestr('PROTOCOL.md',args.protocol.read_bytes())
         return f'COMPLETE PROTOCOL BUNDLE CREATED: {args.output}; transmit by permitted channel, not model prompt'
     if action=='inspect-bundle':
+        if str(args.input)=='-':
+            raise BootstrapError('inspect-bundle requires an explicit bundle file')
         if args.input.stat().st_size>MAX_BUNDLE_BYTES:
             raise BootstrapError('bundle is too large')
         with zipfile.ZipFile(args.input,'r') as z:
@@ -246,20 +266,22 @@ def run(args):
         return (f'STAGED VERIFIED BUNDLE {incoming["protocol_version"]}: {target}; '
                 'not activated; local trust/compatibility approval still required')
     if action=='send':
-        # A body file contains only the kind-specific YAML mapping.
-        body=strict_yaml(args.body_file.read_bytes())
+        # Read a kind-specific YAML body from stdin by default (or a local file).
+        body=strict_yaml(read_input(args.body_file))
         msg=new_message(args.kind,args.sender,args.recipient,args.conversation,ver,body,args.reply_to)
         msg=validate_message(msg,projection)
         s=require_active(state,msg,args.sender,True,fp)
-        write_yaml(args.output,msg)
+        stdout=write_yaml(args.output,msg)
         state_write(state,s)
-        return f'YAML {args.kind.upper()} WRITTEN: {args.output}'
+        return None if stdout else f'YAML {args.kind.upper()} WRITTEN: {args.output}; send the YAML text, not the path'
     if action=='receive':
-        msg=validate_message(args.input.read_bytes(),projection)
+        msg=validate_message(read_input(args.input),projection)
         s=require_active(state,msg,args.local,False,fp)
         state_write(state,s)
-        # Deliberately do not print message body or digests into agent context.
-        return f'VALIDATED YAML {msg["kind"].upper()}: {msg["id"]} from {msg["sender"]} (file: {args.input})'
+        # Explicitly emit the validated message, not its location. The recipient
+        # must receive the actual YAML content in order to interpret the prompt.
+        sys.stdout.buffer.write(yaml_bytes(msg))
+        return None
     raise BootstrapError('unknown exchange command')
 
 
@@ -272,10 +294,10 @@ def main() -> int:
     p.add_argument('--recipient')
     p.add_argument('--local')
     p.add_argument('--conversation')
-    p.add_argument('--input',type=Path)
-    p.add_argument('--output',type=Path)
+    p.add_argument('--input',type=Path,default=Path('-'),help="YAML input path or '-' for stdin (default)")
+    p.add_argument('--output',type=Path,default=Path('-'),help="YAML output path or '-' for stdout (default)")
     p.add_argument('--kind',choices=['request','response','clarification','error','handoff','amendment_notice'])
-    p.add_argument('--body-file',type=Path)
+    p.add_argument('--body-file',type=Path,default=Path('-'),help="YAML body input or '-' for stdin (default)")
     p.add_argument('--reply-to')
     p.add_argument('--bundle-ref')
     p.add_argument('--stage-dir',type=Path)
@@ -283,18 +305,20 @@ def main() -> int:
     a=p.parse_args()
     try:
         args_for={
-            'hello':('sender','recipient','conversation','output'),
-            'answer-hello':('input','local','output'),
-            'accept-ready':('input','local'),
-            'offer':('sender','recipient','conversation','output','reply_to','bundle_ref'),
+            'hello':('sender','recipient','conversation'),
+            'answer-hello':('local',),
+            'accept-ready':('local',),
+            'offer':('sender','recipient','conversation','reply_to','bundle_ref'),
             'bundle':('output',),
             'inspect-bundle':('input','stage_dir'),
-            'send':('sender','recipient','conversation','output','kind','body_file'),
-            'receive':('input','local'),
+            'send':('sender','recipient','conversation','kind'),
+            'receive':('local',),
         }
         for field in args_for[a.action]:
             if getattr(a,field) is None:raise BootstrapError('missing --'+field.replace('_','-'))
-        print(run(a))
+        result=run(a)
+        if result is not None:
+            print(result)
     except (BootstrapError,ValueError,OSError,zipfile.BadZipFile,KeyError) as exc:
         print('EXCHANGE REFUSED: '+str(exc),file=sys.stderr)
         return 1

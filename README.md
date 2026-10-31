@@ -4,11 +4,11 @@
 
 **A shared YAML language for agents to prompt each other clearly, with minimal context.**
 
-**Version:** 0.6.0 · **Status:** proposed integration package; not installed in HPX.
+**Version:** 0.6.1 · **Status:** proposed integration package; not installed in HPX.
 
 ## Why it exists
 
-Development agents often pass one another long prompts, recreate context, or interpret the same instruction differently. HPX-SCP gives them a compact, shared way to **ask, answer, clarify, report and hand work off**. Once they have established the protocol, both agents send and receive structured YAML instead of repeatedly explaining their communication conventions.
+Development agents often pass one another long prompts, recreate context, or interpret the same instruction differently. HPX-SCP gives them a compact, shared way to **ask, answer, clarify, report and hand work off**. Once they have established the protocol, both agents send and receive **the YAML itself, inline in their messages**. A link to a YAML file is not a prompt.
 
 The point is *inter-agent prompting*. Hash verification, record keeping, context recovery and agent-maintained amendments support that exchange; they are not substitutes for it.
 
@@ -17,7 +17,7 @@ The point is *inter-agent prompting*. Hash verification, record keeping, context
 1. **Discover:** An agent instructed to use HPX-SCP sends the other agent a small YAML `hello`. Why? It must not assume its partner already knows the protocol.
 2. **Propagate if needed:** If the recipient replies `need`, send the complete protocol as a separate bundle—not as a long language-model prompt. Why? A new partner needs the same definitions before receiving an SCP task.
 3. **Verify and agree:** The recipient uses independently trusted tools to check the human-canonical Markdown, its appended semantic YAML, two hashes and version. It replies `ready` only for a matching verified protocol. Why? Agreement about meaning matters more than matching syntax.
-4. **Prompt in both directions:** Agents exchange validated YAML `request`, `response`, `clarification`, `error`, `handoff` and `amendment_notice` messages. Why? Shared structures reduce interpretive and context overhead.
+4. **Prompt in both directions:** Agents exchange validated YAML `request`, `response`, `clarification`, `error`, `handoff` and `amendment_notice` messages **as message text, never as file references**. Why? Shared structures reduce interpretive and context overhead.
 5. **Recover and evolve:** Reload verified scopes after compaction; register compatible extensions in the shared protocol. Why? Collaboration must survive sessions and improve without creating private dialects.
 
 ```text
@@ -35,7 +35,7 @@ Agent A           permitted transport          Agent B
 
 ```yaml
 scp: HPX-SCP
-version: 0.6.0
+version: 0.6.1
 kind: request
 id: m-001
 sender: architect
@@ -52,56 +52,55 @@ The reply is another YAML message with `kind: response`, a `reply_to: m-001` ref
 
 **Why YAML?** It retains the readable, indented form of a semantic sketch while allowing strict validation. YAML is the *required* inter-agent message format; historical durable records remain schema-validated JSON for backward compatibility.
 
-## Try a local two-agent exchange
+## Send YAML directly between agents
 
-Requires Python 3, `PyYAML>=6,<7` and `jsonschema>=4.18,<5`.
+**Why inline?** If Agent A sends a path such as `request.yaml`, Agent B has only received a pointer. It has not received the actual task in the shared language. A conforming SCP message contains the full YAML envelope and the task-specific body in the agent-to-agent message itself.
 
-Run in the kit root. Treat `state-a` and `state-b` as separate agents' local state directories; the files stand in for any permitted communication channel.
+The reference CLI reads YAML from stdin and writes **validated message YAML to stdout by default**. For example, once the two agents have completed the readiness handshake:
 
 ```bash
-# 1. Verify the human-canonical specification and its YAML projection.
-python3 scripts/bootstrap_semantic_protocol.py
-
-# 2. Initiator creates hello.yaml (contains control-plane fingerprint).
-python3 scripts/scp_wire.py hello --sender architect --recipient implementer \
-  --conversation demo --state-dir state-a --output hello.yaml
-
-# 3. Recipient checks its own protocol and creates ready.yaml (or need.yaml).
-python3 scripts/scp_wire.py answer-hello --local implementer \
-  --state-dir state-b --input hello.yaml --output ready.yaml
-
-# 4. Initiator accepts the reply; no normal task messages before this.
-python3 scripts/scp_wire.py accept-ready --local architect \
-  --state-dir state-a --input ready.yaml
-
-# 5. Prepare a YAML body: action: implement, target: ClosedComposition.
-printf 'action: implement\ntarget: ClosedComposition\n' > request-body.yaml
-
-python3 scripts/scp_wire.py send --kind request --sender architect \
-  --recipient implementer --conversation demo --state-dir state-a \
-  --body-file request-body.yaml --output request.yaml
-python3 scripts/scp_wire.py receive --local implementer \
-  --state-dir state-b --input request.yaml
+# Agent A: prepare an inline YAML request (no request.yaml file).
+printf 'action: implement\ntarget: ClosedComposition\n' | \
+  python3 scripts/scp_wire.py send --kind request \
+    --sender architect --recipient implementer \
+    --conversation demo --state-dir state-a
 ```
 
-The recipient now reads the validated `request.yaml` and performs its authorised work. To respond, use `scp_wire.py send --kind response --reply-to <request-id>` from `state-b`, then `receive` from `state-a`. These commands validate the **messages**, not execution of the task.
+Agent A sends the resulting YAML text itself through its permitted communication channel. Agent B must receive that text, not a path. The receiving agent can validate the received text:
 
-**If the recipient does not know HPX-SCP:** the sender must transfer a protocol bundle through its permitted channel:
+```bash
+# Agent B: paste/pipeline the actual received YAML into stdin;
+# the validated complete message is emitted on stdout.
+python3 scripts/scp_wire.py receive --local implementer --state-dir state-b
+```
+
+Both agents include their full YAML message envelopes when communicating. Similarly, the `hello` and `ready` handshake commands emit their YAML text by default:
+
+```bash
+# Agent A: output a YAML hello message and send those bytes/text to B.
+python3 scripts/scp_wire.py hello --sender architect \
+  --recipient implementer --conversation demo --state-dir state-a
+
+# Agent B: supply the received hello text via stdin; send the YAML reply back.
+python3 scripts/scp_wire.py answer-hello --local implementer --state-dir state-b
+
+# Agent A: supply the received reply text via stdin and confirm readiness.
+python3 scripts/scp_wire.py accept-ready --local architect --state-dir state-a
+```
+
+These commands do **not** directly connect the agents; their existing permitted messaging channel transports the YAML text. The recipient must not execute the task before a verified `ready` session is established. The CLI can still accept local files using `--input`, `--output` and `--body-file`, but **sending only those file paths to the other agent never constitutes an SCP message**.
+
+### When a peer needs the protocol
+
+A peer that replies `need` requires the verified **complete protocol bundle** via a permitted file-transfer mechanism. This is the exception to inline task messaging: a protocol installation bundle is not an ordinary prompt. An `offer` message is still sent as inline YAML, with `bundle_ref` naming the out-of-band bundle. The receiving side stages and verifies it with independently trusted tooling, and cannot respond `ready` until its own trust rules permit activation.
 
 ```bash
 python3 scripts/scp_wire.py bundle --output scp-protocol.zip
-# If a 'need' was received, set NEED_MESSAGE_ID to its YAML id,
-# then create an offer linked to that message:
-python3 scripts/scp_wire.py offer --sender architect --recipient implementer \
-  --conversation demo --reply-to "$NEED_MESSAGE_ID" \
-  --bundle-ref scp-protocol.zip --output offer.yaml
-# Send offer.yaml and scp-protocol.zip over the permitted channel.
-# Receiver (with independently trusted verifier installed) stages the bundle:
 python3 scripts/scp_wire.py inspect-bundle --input scp-protocol.zip \
   --stage-dir staged-protocol
 ```
 
-Staging verifies consistency **without automatically activating** a new or mismatched protocol. Existing owner/repository trust policies still determine installation and compatibility. If the recipient lacks any trusted verifier, installation must happen through an authorised process before it can respond `ready`. The CLI is a file-based reference implementation, **not a network transport, an agent launcher or an identity-authentication system**.
+The reference CLI validates the format and session state, not agent execution, transport identity or owner authorisation.
 
 ## Human oversight without wasting context
 
