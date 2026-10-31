@@ -1,8 +1,8 @@
 {
   "package": "HPX-SCP",
-  "version": "0.5.0",
-  "source_archive": "hpx-semantic-communication-protocol-v0.5.0.zip",
-  "source_archive_sha256": "bd19a16f6e47d6e7d7f5d18179ef9bfa74cdd316c2198df4e0733c4dfb7c78ec",
+  "version": "0.6.0",
+  "source_archive": "hpx-semantic-communication-protocol-v0.6.0.zip",
+  "source_archive_sha256": "5d94f32ff98a1ee67246c10c7bc12d70ae0cafd448551223da5059a2c58411cf",
   "files": [
     {
       "path": ".github/workflows/validate-semantic-records.yml",
@@ -10,19 +10,19 @@
     },
     {
       "path": "AGENTS.md.fragment",
-      "sha256": "8a811e632f9297968a052b65940a80111786354a8d100bd3ae226aa70b3c7bff"
+      "sha256": "11e9f1c541a8589ba149f0fd6fc50583eb7365e625e7f942a9c6f08542091567"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "41f4dd800e314ba1fe5c8c67e3bfd8a9a56ea388d84b4d89a875e7513e595706"
+      "sha256": "64451a98360c1a4d0d34565c7d0a3b14cd03b02a490f278b2460880321ca7942"
     },
     {
       "path": "INSTALL_PROMPT.md",
-      "sha256": "5586bfe77a000c1e17f831aa0dc8d3603b3811c04e6c2c7eaa309053c804dc06"
+      "sha256": "1738af3f94916df18ab36bc4d687130da52d30406793a8710931007d3c254d89"
     },
     {
       "path": "README.md",
-      "sha256": "0b7fc43fd9e0b277684aad2186a744d2d744f14ea305135d99a5a6bbc786ec2a"
+      "sha256": "077343540406ca942d4992ebbd024abcf6a3768182ca9f0974c15e0d50b580a1"
     },
     {
       "path": "docs/engineering/semantic-protocol/.gitattributes",
@@ -30,11 +30,11 @@
     },
     {
       "path": "docs/engineering/semantic-protocol/PROTOCOL.md",
-      "sha256": "074dd68ad26df7a9461e18c3cdcbd7be136cf16256cb9dae1781fea72909c552"
+      "sha256": "f1fa99a3970212b4fc3cd6dc1b99422d4ddd76a2bee64727a90506e960cb5234"
     },
     {
       "path": "docs/engineering/semantic-protocol/amendments/registry.json",
-      "sha256": "addc5b27e2789e86261b4c6e42c61aba8cbafe23bcf31063d0a12507eb562e5d"
+      "sha256": "43cf5baf4e685f47732dffd092759fdc36b4b9e4b003c91d11c0867d7d8e4454"
     },
     {
       "path": "docs/engineering/semantic-protocol/examples/HPX-HANDOFF-20261030-architecture-verification.json",
@@ -57,6 +57,14 @@
       "sha256": "45aa8fd1e4c644fa47c968097b12dc255070cbf2e1a4c9c9648df9fd416af1d9"
     },
     {
+      "path": "docs/engineering/semantic-protocol/examples/agent-request.yaml",
+      "sha256": "1a1cccd35096b6644be8cfa31fffcdc6b6ebe99f6c8042d5055b5e7e02eb4f5d"
+    },
+    {
+      "path": "docs/engineering/semantic-protocol/examples/agent-response.yaml",
+      "sha256": "133e980dd674bb68b7850518294f9f129fdb122475ed32c44e8e35e020b09213"
+    },
+    {
       "path": "docs/engineering/semantic-protocol/extensions/registry.json",
       "sha256": "e8221e12fab34afa754e6b51c75dcbfa63e77f7cf3d144e1429411ab18639be7"
     },
@@ -74,7 +82,7 @@
     },
     {
       "path": "scripts/bootstrap_semantic_protocol.py",
-      "sha256": "a016cdf9fe55f266d10a454d372c7bed0ac94b5fdc3fbc092d84d8d810cbb367"
+      "sha256": "3af3a18fe5a44870debcc0217df892c51efbdb3a1ebf5fe8c40e2de70c3be8da"
     },
     {
       "path": "scripts/protocol_amendments.py",
@@ -82,7 +90,7 @@
     },
     {
       "path": "scripts/protocol_context.py",
-      "sha256": "19524ad679c338077a3fc7b5d7ccf9a40b022addd6ba301db8a2be23982beaf7"
+      "sha256": "f3af7c224ba2af86602e7546732fd51c83c0bfe1d0299505debb929b63d35f37"
     },
     {
       "path": "scripts/protocol_recovery.py",
@@ -93,16 +101,24 @@
       "sha256": "1f5e054f8319a123634ae4374d4277e6a2257faa32e655ce8f2fabd2463fd185"
     },
     {
+      "path": "scripts/scp_wire.py",
+      "sha256": "45a02b1a5be97d2decb1cc30c8a925fd4c3e92e6b7324f64e16ce879bc613b60"
+    },
+    {
       "path": "scripts/validate_semantic_records.py",
       "sha256": "a0f4d597e2ac006cfbbb09e76fbec39dc67d9d28605c7744da62e5afb478b785"
     },
     {
       "path": "tests/test_bootstrap_semantic_protocol.py",
-      "sha256": "7afd7739ecc70d5f3ef80bca5b4e2dbc63499616a35527176f714c10049b8bc9"
+      "sha256": "6fb792305dd5e36d0657e81437ed98161c4fbf6b40117747b3570093d23a187e"
     },
     {
       "path": "tests/test_recovery_and_amendments.py",
-      "sha256": "1c513f307d1256f5876348d6b6f521e38caefa71304f317a1f8d21fc08443a7d"
+      "sha256": "358316f2798a86b90758c2a0794340eb9908d25107377c1e9e96a06eddf897f9"
+    },
+    {
+      "path": "tests/test_scp_wire.py",
+      "sha256": "12dd07d350f2d09c7c4863bb434aab49c6c769deca0b1ad39fd9d2e8ce4d62a1"
     },
     {
       "path": "tests/test_semantic_records.py",

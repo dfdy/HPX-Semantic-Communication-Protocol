@@ -16,7 +16,7 @@ from protocol_amendments import validate_registry
 
 
 def packet_for(projection: dict, scopes: list[str], record_types: list[str] | None = None,
-               relations: list[str] | None = None) -> dict:
+               relations: list[str] | None = None, message_kinds: list[str] | None = None) -> dict:
     requested = set(scopes) | {'kernel', 'baseline'}
     if not requested <= SCOPES:
         raise BootstrapError('unknown requested context scope: ' + ','.join(sorted(requested - SCOPES)))
@@ -32,6 +32,18 @@ def packet_for(projection: dict, scopes: list[str], record_types: list[str] | No
         requested.add('records')
     if relations and 'records' not in requested:
         requested.add('records')
+    message_map = {x['kind']:x for x in projection['message_types']}
+    for kind in message_kinds or []:
+        if kind not in message_map:
+            raise BootstrapError('unknown message kind: ' + kind)
+    if message_kinds and not requested.intersection({'exchange','negotiation'}):
+        requested.add('exchange')
+    selected_message_kinds = list(dict.fromkeys(message_kinds or []))
+    if not message_kinds:
+        if 'exchange' in requested:
+            selected_message_kinds = list(message_map)
+        elif 'negotiation' in requested:
+            selected_message_kinds = ['hello','ready','need','offer']
     packet = {
         'protocol': 'HPX-SCP',
         'version': projection['protocol_version'],
@@ -39,6 +51,9 @@ def packet_for(projection: dict, scopes: list[str], record_types: list[str] | No
         'scopes': sorted(requested),
         'rules': [{'id': r['id'], 'do': r['directive']} for r in projection['rules'] if r['scope'] in requested],
     }
+    if selected_message_kinds:
+        packet['message_envelope'] = projection['message_envelope']
+        packet['message_contracts'] = [message_map[k] for k in selected_message_kinds]
     if record_types:
         packet['record_contracts'] = [type_map[k] for k in dict.fromkeys(record_types)]
     if relations:
@@ -52,6 +67,9 @@ def scoped_packet_as_yaml(packet: dict, projection: dict) -> str:
     for rule in packet['rules']:
         grouped[scope_lookup[rule['id']]][rule['id']] = rule['do']
     payload = {'HPX-SCP': {'version':packet['version'], 'verified':True, 'scopes':grouped}}
+    if 'message_contracts' in packet:
+        payload['HPX-SCP']['message_envelope'] = {f['name']:f['meaning'] for f in packet['message_envelope']}
+        payload['HPX-SCP']['message_kinds'] = {m['kind']:{'required':m['required_body'],'meaning':m['meaning']} for m in packet['message_contracts']}
     if 'record_contracts' in packet:
         payload['HPX-SCP']['records'] = {r['kind']:{'statuses':r['statuses'],
             'required':r['required_content_fields'],'meaning':r['meaning']} for r in packet['record_contracts']}
@@ -65,6 +83,7 @@ def main():
     parser.add_argument('--protocol', type=Path, default=PROTOCOL)
     parser.add_argument('--for', dest='scopes', action='append', default=[], choices=sorted(SCOPES))
     parser.add_argument('--record-type', action='append', default=[])
+    parser.add_argument('--message-kind', action='append', default=[])
     parser.add_argument('--relation', action='append', default=[])
     parser.add_argument('--trusted-sha256')
     parser.add_argument('--format', choices=('yaml','json'), default='yaml')
@@ -72,7 +91,7 @@ def main():
     try:
         verified = verify_path(args.protocol, args.trusted_sha256)
         validate_registry(verified, root=args.protocol.resolve().parents[3] if args.protocol.resolve() == PROTOCOL.resolve() else None)
-        result = packet_for(verified, args.scopes, args.record_type, args.relation)
+        result = packet_for(verified, args.scopes, args.record_type, args.relation, args.message_kind)
     except (BootstrapError, OSError) as exc:
         print('CONTEXT REFUSED: ' + str(exc), file=sys.stderr)
         return 1

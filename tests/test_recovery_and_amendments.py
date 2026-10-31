@@ -28,14 +28,14 @@ class ContinuityAndAmendments(unittest.TestCase):
         (base/'amendments').mkdir(parents=True)
         (base/'records').mkdir(parents=True)
         (base/'amendments'/'registry.json').write_text(json.dumps({
-            'registry_version':1,'protocol_version':'0.5.0',
+            'registry_version':1,'protocol_version':'0.6.0',
             'amendments':[]},indent=2))
         return base
 
     def applied_record(self,base: Path,kind='compatible') -> dict:
         record=deepcopy(self.example)
         record['status']='applied'
-        record['protocol_version']='0.5.0'
+        record['protocol_version']='0.6.0'
         record['content']['change_class']=kind
         record['content']['authorisation']={'basis':'standing_delegation' if kind=='compatible' else 'owner_review','ref':'owner-approved-reference'}
         record['content']['validation']={'outcome':'pass','commands':['python -m unittest'],'evidence':['tests passed']}
@@ -76,7 +76,7 @@ class ContinuityAndAmendments(unittest.TestCase):
             stale['protocol_version']='0.4.0'
             path.write_text(json.dumps(stale))
             fixed=amendments.sync(self.projection,root=Path(d))
-            self.assertEqual(fixed['protocol_version'],'0.5.0')
+            self.assertEqual(fixed['protocol_version'],'0.6.0')
             with self.assertRaisesRegex(bootstrap.BootstrapError,'cannot sync .* backwards'):
                 older=dict(self.projection)
                 older['protocol_version']='0.4.0'
@@ -86,7 +86,7 @@ class ContinuityAndAmendments(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             base=self.staged_root(Path(d))
             rec=self.applied_record(base)
-            ent={'id':rec['id'],'record_path':f"records/{rec['id']}.json",'introduced_in':'0.5.0','status':'applied'}
+            ent={'id':rec['id'],'record_path':f"records/{rec['id']}.json",'introduced_in':'0.6.0','status':'applied'}
             path=base/'amendments'/'registry.json'
             reg=json.loads(path.read_text());reg['amendments']=[ent,ent];path.write_text(json.dumps(reg))
             with self.assertRaisesRegex(bootstrap.BootstrapError,'duplicate'):
@@ -114,7 +114,7 @@ class ContinuityAndAmendments(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             base=self.staged_root(Path(d))
             path=base/'amendments'/'registry.json'
-            reg=json.loads(path.read_text());reg['amendments']=[{'id':'HPX-PROTO-20261030-missing','record_path':'records/HPX-PROTO-20261030-missing.json','introduced_in':'0.5.0','status':'applied'}]
+            reg=json.loads(path.read_text());reg['amendments']=[{'id':'HPX-PROTO-20261030-missing','record_path':'records/HPX-PROTO-20261030-missing.json','introduced_in':'0.6.0','status':'applied'}]
             path.write_text(json.dumps(reg))
             with self.assertRaisesRegex(bootstrap.BootstrapError,'missing'):
                 amendments.validate_registry(self.projection,root=Path(d))
@@ -123,7 +123,7 @@ class ContinuityAndAmendments(unittest.TestCase):
         p=subprocess.run([sys.executable,str(ROOT/'scripts/protocol_amendments.py'),'list'],text=True,capture_output=True)
         self.assertEqual(p.returncode,0,p.stderr)
         self.assertNotIn('sha256',p.stdout)
-        self.assertEqual(json.loads(p.stdout)['version'],'0.5.0')
+        self.assertEqual(json.loads(p.stdout)['version'],'0.6.0')
 
     def test_checkpoint_and_recovery(self):
         checkpoint={
@@ -134,7 +134,7 @@ class ContinuityAndAmendments(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as d:
             state=Path(d)
-            recovery.save_checkpoint('session_1',checkpoint,'0.5.0',state)
+            recovery.save_checkpoint('session_1',checkpoint,'0.6.0',state)
             result=recovery.recover('session_1',['implement'],state)
             self.assertTrue(result['requires_workspace_reconciliation'])
             self.assertFalse(result['checkpoint_authoritative'])
@@ -147,7 +147,7 @@ class ContinuityAndAmendments(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             state=Path(d)
             with self.assertRaisesRegex(bootstrap.BootstrapError,'unexpected'):
-                recovery.save_checkpoint('session',{'objective':'x','token':'secret'},'0.5.0',state)
+                recovery.save_checkpoint('session',{'objective':'x','token':'secret'},'0.6.0',state)
             with self.assertRaisesRegex(bootstrap.BootstrapError,'invalid session'):
                 recovery.read_checkpoint('../unsafe',state)
 
@@ -160,7 +160,7 @@ class ContinuityAndAmendments(unittest.TestCase):
     def test_corrupted_canonical_prevents_recovery(self):
         with tempfile.TemporaryDirectory() as d:
             bad=Path(d)/'PROTOCOL.md'
-            bad.write_bytes(bootstrap.PROTOCOL.read_bytes().replace(b'Minimum Sufficient Protocol',b'Invalid Protocol',1))
+            bad.write_bytes(bootstrap.PROTOCOL.read_bytes().replace(b'Inter-agent prompting is the primary function',b'Broken Protocol',1))
             with self.assertRaisesRegex(bootstrap.BootstrapError,'SHA-256 mismatch'):
                 recovery.recover('session',[],Path(d),protocol=bad)
 

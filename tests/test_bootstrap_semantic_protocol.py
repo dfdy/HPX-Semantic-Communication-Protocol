@@ -29,12 +29,15 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(self.manifest['machine_sha256'], hashlib.sha256(self.machine_bytes).hexdigest())
         self.assertEqual(set(self.appendix), {'HPX-SCP'})
         self.assertEqual(self.appendix['HPX-SCP']['format'], 4)
-        self.assertEqual(self.projection['protocol_version'], '0.5.0')
+        self.assertEqual(self.projection['protocol_version'], '0.6.0')
         self.assertEqual(len(self.projection['record_types']), 8)
         self.assertIn('implements',self.appendix['HPX-SCP']['relationships'])
+        self.assertIn('request', self.appendix['HPX-SCP']['message_types'])
+        self.assertIn('negotiation', self.appendix['HPX-SCP']['scopes'])
+        self.assertIn('exchange', self.appendix['HPX-SCP']['scopes'])
         self.assertEqual(set(self.appendix['HPX-SCP']['amendment_classes']), {'compatible','breaking','governance'})
         self.assertIn('SCP-CONTEXT-001', self.appendix['HPX-SCP']['scopes']['baseline'])
-        self.assertEqual(set(self.appendix['HPX-SCP']), {'version','format','authority','scopes','record_envelope','record_types','relationships','amendment_classes'})
+        self.assertEqual(set(self.appendix['HPX-SCP']), {'version','format','authority','scopes','message_envelope','message_types','record_envelope','record_types','relationships','amendment_classes'})
         self.assertNotIn('source_text', self.machine_bytes.decode())
         self.assertGreater(len(self.natural), 3000)
 
@@ -42,7 +45,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(writer.rebuild_bytes(self.data), self.data)
 
     def test_prose_tampering_blocks(self):
-        altered = self.data.replace(b'Minimum Sufficient Protocol', b'Maximum Sufficient Protocol', 1)
+        altered = self.data.replace(b'Inter-agent prompting is the primary function', b'Inter-agent prompting is not the primary function', 1)
         with self.assertRaisesRegex(gate.BootstrapError, 'SHA-256 mismatch'):
             gate.verify_document(altered)
 
@@ -89,7 +92,7 @@ class BootstrapTests(unittest.TestCase):
                     gate.verify_document(bad)
 
     def test_custom_yaml_tags_block(self):
-        bad=self.data.replace(b'  version: 0.5.0\n', b'  version: !python/object/a.b.C 0.5.0\n',1)
+        bad=self.data.replace(b'  version: 0.6.0\n', b'  version: !python/object/a.b.C 0.5.0\n',1)
         with self.assertRaises(gate.BootstrapError):
             gate.verify_document(bad)
 
@@ -113,7 +116,7 @@ class BootstrapTests(unittest.TestCase):
         with self.assertRaises(gate.BootstrapError):
             gate.verify_document(bad)
         repaired=writer.rebuild_bytes(bad)
-        self.assertEqual(gate.verify_document(repaired)['protocol_version'],'0.5.0')
+        self.assertEqual(gate.verify_document(repaired)['protocol_version'],'0.6.0')
         self.assertNotEqual(repaired,self.data)
 
     def test_untagged_natural_prose_blocks(self):
@@ -127,6 +130,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn('SCP-CONTEXT-001',ids)
         self.assertIn('SCP-KERNEL-IDENTITY',ids)
         self.assertNotIn('SCP-TASK-IMPLEMENT',ids)
+        self.assertNotIn('SCP-NEG-001',ids)
         self.assertNotIn('SCP-CHANGE-005',ids)
         self.assertNotIn('record_contracts',p)
 
@@ -144,7 +148,7 @@ class BootstrapTests(unittest.TestCase):
     def test_no_output_when_corrupted(self):
         with tempfile.TemporaryDirectory() as d:
             target=Path(d)/'PROTOCOL.md'
-            target.write_bytes(self.data.replace(b'Minimum Sufficient Protocol',b'Invalid Protocol',1))
+            target.write_bytes(self.data.replace(b'Inter-agent prompting is the primary function',b'Broken Protocol',1))
             result=subprocess.run([sys.executable,str(ROOT/'scripts/protocol_context.py'),
                                    '--protocol',str(target),'--for','implement'],capture_output=True,text=True)
             self.assertNotEqual(result.returncode,0)

@@ -1,10 +1,76 @@
 # HPX Semantic Communication Protocol (HPX-SCP)
 
-**Version:** 0.5.0  
-**Status:** proposed; owner adoption required before repository enforcement.  
-**Purpose:** Minimum Sufficient Protocol: minimise machine-to-machine prompting, repeated interpretation, and context use, without sacrificing correctness, provenance, or human oversight.
+**Version:** 0.6.0  
+**Status:** proposed integration package; this user-directed architectural correction is authorised for preparation, but repository adoption remains separate.  
+**Purpose:** Establish a shared, verified YAML prompting language between agents, then exchange minimum-sufficient requests and responses bidirectionally; retain human authority, low context use, provenance and continuity.
 
-## 0. Canonicality and minimum context
+## 0. Inter-agent prompting is the primary function
+
+**SCP-WIRE-PURPOSE [baseline]:** HPX-SCP is primarily a bidirectional inter-agent prompting protocol: establish a shared verified YAML language, then exchange task requests, responses, clarifications, errors, handoffs and amendment notices with minimum sufficient context. Verification, records, compaction recovery and amendments support this exchange rather than replace it.
+
+**SCP-WIRE-TRIGGER [negotiation]:** An agent instructed to use HPX-SCP with another agent MUST initiate protocol discovery even if the recipient is not known to support HPX-SCP. It MUST NOT assume shared protocol knowledge or proceed with an ordinary HPX-SCP request before readiness is established.
+
+**SCP-WIRE-CHANNEL [baseline]:** HPX-SCP specifies message content and protocol-state transitions, not an agent invocation, network service, transport security or tool permission. Agents require an actual permitted communication channel; the reference CLI implements file-based exchanges only.
+
+## 1. Discovery, propagation and negotiation
+
+**SCP-NEG-001 [negotiation]:** The initiator sends a minimal YAML `hello` control message identifying its protocol version and a content fingerprint consumed by the receiver's verifier outside ordinary agent context. The receiver checks its locally installed canonical protocol and replies `ready` only after independent verification and exact protocol compatibility, otherwise `need` with a reason.
+
+**SCP-NEG-002 [negotiation]:** On `need`, the initiating agent MUST offer and transfer a verified protocol bundle containing the complete canonical Markdown, appended semantic YAML and integrity manifest via the permitted transport, outside ordinary model context. The receiver stages and verifies the bundle using independently trusted tooling; a received verifier MUST NOT be executed solely because the sender supplied it.
+
+**SCP-NEG-003 [negotiation]:** The receiver MUST NOT activate a new or divergent version merely because a received bundle passes self-consistency checks; acceptance requires supported compatibility and existing owner/repository trust policy. If verification, installation or compatibility fails, exchange `need` or `error` and refuse protocol-dependent tasks.
+
+**SCP-NEG-004 [negotiation]:** A `ready` acknowledgement establishes a conversation-local, version-specific protocol session only when the recipient has verified the agreed protocol. The initiator must validate that readiness reply and bind it to the original `hello` before sending a task request. A claimed `ready` does not independently authenticate the sender or guarantee model obedience.
+
+**SCP-NEG-005 [negotiation]:** Protocol upgrades during a session require renewed discovery and readiness. Agents MUST NOT silently invent a dialect, negotiate incompatible meanings, downgrade authority, or substitute natural-language prompts after establishment.
+
+**SCP-NEG-006 [negotiation]:** Bootstrap `hello`, `ready` and `need` messages use the small fixed YAML envelope below even before full protocol agreement; these are control messages, not authorisation to run user tasks.
+
+## 1.1 Bidirectional YAML message contracts
+
+**SCP-MSG-001 [exchange]:** After readiness, every HPX-SCP-governed agent-to-agent prompt and response MUST be a single strict UTF-8 YAML mapping with the required envelope fields `scp`, `version`, `kind`, `id`, `sender`, `recipient`, `conversation`, and `body`; `reply_to` and `refs` are optional. The `body` MUST be a mapping, and `refs` a list of stable identifiers. No JSON, custom notation or free-form conversational substitute is an HPX-SCP message.
+
+**SCP-MSG-002 [exchange]:** Every message MUST be checked against the agreed version, registered kind, required body fields, identifiers and existing session state before dispatch or use. Reject malformed YAML, duplicate keys, aliases, anchors, custom tags, unknown kinds, unsupported versions or requests received before readiness.
+
+**SCP-MSG-003 [exchange]:** Requests MUST express action, target and applicable references or constraints sufficiently for safe interpretation; responses MUST reference the originating request and report truthful status, outcome, evidence references and unresolved issues as applicable. Clarifications and errors MUST reference their triggering messages; use no invented proof of work.
+
+**SCP-MSG-004 [exchange]:** Exchange the smallest sufficient YAML body and resolvable record/source references. Do not repeat the protocol, embedded canonical prose, hashes or unchanged task history inside ordinary messages. If references cannot be resolved, ask for clarification or transfer the referenced data through the permitted transport.
+
+**SCP-MSG-005 [exchange]:** The peer may request additional verified protocol scopes without redefining the message grammar. Structured YAML is for inter-agent messages; direct communication with humans remains ordinary natural language unless explicitly requested otherwise.
+
+**SCP-MSG-006 [exchange]:** The sender and recipient MUST both validate outbound and inbound messages using their own verified protocol. A YAML message is a structured claim, not proof of authorisation, execution, identity or delivery; provenance and actual tool evidence remain separate.
+
+### 1.2 Message envelope fields
+
+| Field | Meaning |
+|---|---|
+| `scp` | Constant `HPX-SCP`. |
+| `version` | Negotiated semantic protocol version. |
+| `kind` | One registered message kind from the table below. |
+| `id` | Stable unique message identifier within its conversation. |
+| `sender` | Claimed sending agent identity; transport authentication is separate. |
+| `recipient` | Intended receiving agent identity. |
+| `conversation` | Shared conversation/session identifier. |
+| `body` | Kind-specific mapping containing minimum sufficient information. |
+| `reply_to` | Optional prior message ID for replies; required for replies to requests or control messages. |
+| `refs` | Optional list of accessible stable record/source references. |
+
+### 1.3 Message kinds
+
+| Kind | Required body | Meaning |
+|---|---|---|
+| `hello` | `fingerprint` | Bootstrap discovery; content fingerprint is checked outside ordinary agent context. |
+| `ready` | `accepted_version` | Recipient has verified the offered protocol and is ready for YAML exchange. |
+| `need` | `reason` | Recipient lacks a verified compatible protocol or needs external installation. |
+| `offer` | `bundle_ref` | Location/identifier for a separately transmitted complete protocol bundle. |
+| `request` | `action`, `target` | Prompt assigning a task or requesting an operation. |
+| `response` | `status` | Result linked to a request; allowed statuses are `completed`, `partial`, `failed`, `blocked`. |
+| `clarification` | `question` | Targeted question about a prior message. |
+| `error` | `code`, `explanation` | Explicit rejection or processing failure. |
+| `handoff` | `objective`, `next_action` | Minimal durable transfer of work state and source references. |
+| `amendment_notice` | `amendment_id`, `version` | Notify peers about a published, verified shared protocol amendment. |
+
+## 2. Human-readable canonicality and minimal context
 
 **SCP-PRIME-001 [baseline]:** The human-readable part of this document, ending immediately before the unique semantic-appendix delimiter, is the sole canonical HPX-SCP policy. The appended semantic projection, schemas, validator, records, and summaries are subordinate. Conflicts are reported and settled in favour of canonical text.
 
@@ -16,7 +82,7 @@
 
 **SCP-PRIME-005 [amend]:** Amend canonical prose first; generate the appendix deterministically; verify, test, and record the change. The appendix has no independent amendment authority. Changes to the prime directive, kernel, gating, or approval authority require explicit owner approval.
 
-## 1. Minimal bootstrap kernel
+## 2.1 Minimal bootstrap kernel
 
 **SCP-KERNEL-IDENTITY [kernel]:** Each durable record has a persistent identity and attributable actor; unknown authorship is explicit. Identity grants no permission.
 
@@ -28,7 +94,7 @@
 
 **SCP-KERNEL-AMENDMENT [kernel]:** Agents may apply compatible, tested protocol extensions within existing task permissions; breaking, governance, kernel, and prime-directive changes require owner approval. Every material amendment is attributable, versioned, validated, and reversible.
 
-## 2. Minimum sufficient context
+## 3. Minimum sufficient context
 
 **SCP-CONTEXT-001 [baseline]:** Default prompting contains only the current task, verified `kernel` and `baseline` rules, and the smallest additional task scopes, record contracts, and source identifiers necessary for correct execution; avoid full-specification, full-appendix, and unrelated-record dumps.
 
@@ -36,7 +102,7 @@
 
 **SCP-CONTEXT-003 [baseline]:** Where a task depends on additional rules, the agent MUST request another verified scope/record packet or inspect explicit approved HPX task sources. Context minimisation MUST NOT conceal contradictions, dependencies, authority, evidence, or safety constraints.
 
-**SCP-CONTEXT-004 [baseline]:** Agent handoffs SHOULD exchange record IDs and changed facts/deltas rather than restating unchanged instructions. A recipient MUST resolve references and verify versions and statuses before acting; IDs without accessible records are not sufficient context.
+**SCP-CONTEXT-004 [baseline]:** YAML agent handoffs SHOULD exchange record IDs and changed facts/deltas rather than restating unchanged instructions. A recipient MUST resolve references and verify versions and statuses before acting; IDs without accessible records are not sufficient context.
 
 **SCP-CONTEXT-005 [baseline]:** If verification fails, stop machine-protocol loading. An authorised maintainer may inspect canonical text outside the normal agent prompt and repair/rebuild; no machine-generated summary becomes the fallback authority.
 
@@ -44,19 +110,21 @@
 
 **SCP-CONTEXT-006 [verify]:** Evaluate efficiency by measured token use, repeated context, correction loops, interpretation disagreements, missed constraints, and test regressions against the prior workflow; prioritise correctness over smaller packets.
 
-## 2.1 Context continuity and recovery
+## 4. Agent task rules
 
-**SCP-RECOVERY-001 [baseline]:** Persistent repository guidance MUST point to verifier and recovery commands, not copy the full protocol. At session start, after known compaction, at session resumption, or when state is uncertain, load fresh verified semantic instructions before protocol-governed work.
+**SCP-TASK-PLAN [plan]:** Identify relevant approved specifications, unresolved conflicts, and expected outcome before proposing changes; distinguish observed implementation, conjecture, and obligation.
 
-**SCP-RECOVERY-002 [recovery]:** Persist a small per-session checkpoint outside model context before an expected interruption: objective, constraints, sourced decisions, evidence, blockers, changed files, record IDs and next action. Checkpoints are untrusted working claims, not authority; never include secrets, complete protocol copies or hashes.
+**SCP-TASK-IMPLEMENT [implement]:** Implement only within assigned authority; record material implementation evidence with exact paths/revisions and do not claim unexecuted tests.
 
-**SCP-RECOVERY-003 [recovery]:** Recovery MUST verify both integrity digests and semantic correspondence outside model context, load only applicable scopes, then reconcile checkpoint claims against current workspace and records before mutations. Invalid or stale checkpoints never override the current protocol.
+**SCP-TASK-VERIFY [verify]:** Report verification as `pass`, `fail`, `partial`, or `not_run`, including commands, targets, results, and limitations; checks do not confer approval.
 
-**SCP-RECOVERY-004 [recovery]:** Optional supported pre/post-compaction integrations MAY trigger checkpoint or recovery, but MUST NOT assume hooks exist or inject unverified instructions. Session-start checks and explicit commands are the fallback; the protocol cannot itself intercept every compaction or write.
+**SCP-TASK-HANDOFF [handoff]:** Transfer objective, confirmed facts, record references, unresolved questions, and next actions; verify received references before relying on them.
 
-**SCP-RECOVERY-005 [baseline]:** Unverified or uncertain protocol state forbids consequential protocol-dependent repository mutations until revalidation and reconciliation. External write guards or CI are necessary for stronger enforcement; prompt instructions do not grant permissions.
+**SCP-TASK-CONFLICT [baseline]:** When records conflict or required context is missing, retain the higher-authority source, surface an `issue`, and seek appropriate review rather than guessing or silently replacing an approved requirement.
 
-## 3. Durable records
+**SCP-TASK-BOUNDARY [baseline]:** HPX-SCP is a bidirectional agent-prompting convention, not HPX runtime architecture, not a tool permission grant, and not a replacement for HPX specifications or repository restrictions.
+
+## 5. Durable records
 
 **SCP-RECORD-001 [records]:** Persistent records are UTF-8 JSON with no duplicate keys, one object per `records/<id>.json`, validated against local Draft 2020-12 JSON Schema. Sketches and ordinary discussion do not automatically become records.
 
@@ -66,7 +134,7 @@
 
 **SCP-RECORD-004 [records]:** Namespaced `extensions` must be registered with local safe JSON Schemas; reject unknown extensions and external schema loading. Preserve readability of v0.1.0–v0.3.0 records; do not rewrite their declared protocol versions.
 
-### 3.1 Required record envelope
+### 5.1 Required record envelope
 
 | Field | Meaning |
 |---|---|
@@ -85,7 +153,7 @@
 | `content` | Type-specific mandatory payload |
 | `extensions` | Optional registered `x.<namespace>.<name>` entries |
 
-### 3.2 Record kinds
+### 5.2 Record kinds
 
 | Kind | Statuses | Required content | Meaning |
 |---|---|---|---|
@@ -98,7 +166,7 @@
 | `handoff` | `open`, `acknowledged`, `completed` | `from_agent`, `to_agent`, `objective`, `confirmed`, `next_actions`, `open_questions` | Persisted transfer of known state and unresolved work |
 | `protocol_change` | `proposed`, `applied`, `rejected`, `reverted` | `change_class`, `change_summary`, `rationale`, `files_changed`, `compatibility`, `rollback`, `validation` | Audited evolution; applied changes require correct authorisation and passing checks |
 
-### 3.3 Relationships
+### 5.3 Relationships
 
 - `derived_from`: based on another record; no inherited approval.
 - `proposes_change_to`: recommends modifying another record.
@@ -111,21 +179,19 @@
 - `resolves`: reviewed resolution of an issue.
 - `hands_off`: persisted handoff of another record.
 
-## 4. Agent task rules
+## 6. Context continuity and recovery
 
-**SCP-TASK-PLAN [plan]:** Identify relevant approved specifications, unresolved conflicts, and expected outcome before proposing changes; distinguish observed implementation, conjecture, and obligation.
+**SCP-RECOVERY-001 [baseline]:** Persistent repository guidance MUST point to verifier and recovery commands, not copy the full protocol. At session start, after known compaction, at session resumption, or when state is uncertain, load fresh verified semantic instructions before protocol-governed work.
 
-**SCP-TASK-IMPLEMENT [implement]:** Implement only within assigned authority; record material implementation evidence with exact paths/revisions and do not claim unexecuted tests.
+**SCP-RECOVERY-002 [recovery]:** Persist a small per-session checkpoint outside model context before an expected interruption: objective, constraints, sourced decisions, evidence, blockers, changed files, record IDs and next action. Checkpoints are untrusted working claims, not authority; never include secrets, complete protocol copies or hashes.
 
-**SCP-TASK-VERIFY [verify]:** Report verification as `pass`, `fail`, `partial`, or `not_run`, including commands, targets, results, and limitations; checks do not confer approval.
+**SCP-RECOVERY-003 [recovery]:** Recovery MUST verify both integrity digests and semantic correspondence outside model context, load only applicable scopes, then reconcile checkpoint claims against current workspace and records before mutations. Invalid or stale checkpoints never override the current protocol.
 
-**SCP-TASK-HANDOFF [handoff]:** Transfer objective, confirmed facts, record references, unresolved questions, and next actions; verify received references before relying on them.
+**SCP-RECOVERY-004 [recovery]:** Optional supported pre/post-compaction integrations MAY trigger checkpoint or recovery, but MUST NOT assume hooks exist or inject unverified instructions. Session-start checks and explicit commands are the fallback; the protocol cannot itself intercept every compaction or write.
 
-**SCP-TASK-CONFLICT [baseline]:** When records conflict or required context is missing, retain the higher-authority source, surface an `issue`, and seek appropriate review rather than guessing or silently replacing an approved requirement.
+**SCP-RECOVERY-005 [baseline]:** Unverified or uncertain protocol state forbids consequential protocol-dependent repository mutations until revalidation and reconciliation. External write guards or CI are necessary for stronger enforcement; prompt instructions do not grant permissions.
 
-**SCP-TASK-BOUNDARY [baseline]:** HPX-SCP is an agent communication convention, not HPX runtime architecture, not a tool permission grant, and not a replacement for HPX specifications or repository restrictions.
-
-## 5. Agent-maintained protocol amendments
+## 7. Agent-maintained protocol amendments
 
 **SCP-CHANGE-001 [amend]:** Before extending the protocol, demonstrate a concrete recurring communication gap and prefer reusing existing vocabulary, concise prose, or an optional extension. Change the smallest part necessary.
 
@@ -145,7 +211,7 @@
 
 **SCP-CHANGE-009 [amend]:** Applied amendments become available to other agents only after shared index publication and verification. Existing agent sessions must reverify and reload before consuming amended vocabulary; checkpoint or notification is insufficient.
 
-### 5.1 Change classes
+### 7.1 Change classes
 
 | Class | Examples | Activation |
 |---|---|---|
@@ -153,7 +219,7 @@
 | **Breaking** | Renamed/removed fields, changed semantics, invalidated earlier valid records | Explicit owner approval and migration |
 | **Governance** | Changed authority, validation, kernel, security or amendment permissions | Explicit owner approval |
 
-## 6. Verification, projection and context boundaries
+## 8. Verification, projection and context boundaries
 
 **SCP-FRAME-001 [preflight]:** The file is UTF-8 without BOM and uses LF. One `<!-- HPX-SCP:SEMANTIC-APPENDIX-BEGIN v4 -->` separates canonical prose from a fenced semantic YAML block; one subsequent `<!-- HPX-SCP:INTEGRITY-MANIFEST-BEGIN v4 -->` separates that YAML from a final fenced YAML integrity manifest. No trailing material is permitted.
 
@@ -165,7 +231,7 @@
 
 **SCP-BOOT-001 [preflight]:** `scripts/bootstrap_semantic_protocol.py` is the fail-closed independent preflight. It loads and checks canonical bytes without sending them into agent context. `scripts/protocol_context.py` may output a verified minimal semantic packet only after the preflight succeeds.
 
-**SCP-BOOT-002 [preflight]:** Default agent packet selection is `kernel` plus `baseline` and explicitly selected work scopes. A packet includes version, verification status, requested scopes, and their applicable directives; optional record kinds or relationship definitions are included only when asked for. Scope selection is a relevance filter, not a permissions or authority filter.
+**SCP-BOOT-002 [preflight]:** Default agent packet selection is `kernel` plus `baseline` and explicitly selected work scopes; inter-agent sessions additionally load `negotiation` during establishment and `exchange` for normal messages. A packet includes version, verification status, requested scopes, and their applicable directives; optional record kinds or relationship definitions are included only when asked for. Scope selection is a relevance filter, not a permissions or authority filter.
 
 **SCP-BOOT-003 [kernel]:** When scope coverage is uncertain, the agent must expand the verified packet rather than assume absent directives do not apply. Protocol-specific amendments additionally load `amend`; durable record writing additionally loads `records` and the required kind definitions.
 
@@ -177,15 +243,15 @@
 
 **SCP-BOOT-008 [preflight]:** The canonical semantic appendix and ordinary agent packets use a restricted, deterministic YAML subset (UTF-8, indentation, mappings/sequences/scalars; no duplicate keys, anchors, aliases, custom tags, or merge keys). Historical JSON records and schemas remain valid; the context loader may emit JSON only for explicitly requesting legacy consumers.
 
-**SCP-BOOT-005 [amend]:** The prescribed maintenance sequence is `python3 scripts/rebuild_semantic_appendix.py`, `python3 scripts/protocol_amendments.py sync`, `python3 scripts/bootstrap_semantic_protocol.py`, `python3 scripts/protocol_amendments.py validate`, `python3 scripts/validate_semantic_records.py`, and `python3 -m unittest discover -s tests -p 'test_*.py'`; successful checks do not themselves constitute owner approval.
+**SCP-BOOT-005 [amend]:** The prescribed maintenance sequence includes the inter-agent message tests and is `python3 scripts/rebuild_semantic_appendix.py`, `python3 scripts/protocol_amendments.py sync`, `python3 scripts/bootstrap_semantic_protocol.py`, `python3 scripts/protocol_amendments.py validate`, `python3 scripts/validate_semantic_records.py`, and `python3 -m unittest discover -s tests -p 'test_*.py'`; successful checks do not themselves constitute owner approval.
 
-## 7. Human review and measurement
+## 9. Human review and measurement
 
 **SCP-REVIEW-001 [verify]:** The human owner retains the readable policy, semantic appendix, and change history for inspection. Do not claim efficiency improvements without comparing measured task outcomes. The two manifest hashes detect accidental divergence, not malicious coordinated edits or author authenticity; protect the source and verifier using repository permissions and owner review.
 <!-- HPX-SCP:SEMANTIC-APPENDIX-BEGIN v4 -->
 ```yaml
 HPX-SCP:
-  version: 0.5.0
+  version: 0.6.0
   format: 4
   authority: canonical_natural_language_only
   scopes:
@@ -205,6 +271,12 @@ HPX-SCP:
       SCP-BOOT-003: When scope coverage is uncertain, the agent must expand the verified packet rather than assume absent directives do not apply.
         Protocol-specific amendments additionally load `amend`; durable record writing additionally loads `records` and the required kind definitions.
     baseline:
+      SCP-WIRE-PURPOSE: 'HPX-SCP is primarily a bidirectional inter-agent prompting protocol: establish a shared verified YAML language, then
+        exchange task requests, responses, clarifications, errors, handoffs and amendment notices with minimum sufficient context. Verification,
+        records, compaction recovery and amendments support this exchange rather than replace it.'
+      SCP-WIRE-CHANNEL: HPX-SCP specifies message content and protocol-state transitions, not an agent invocation, network service, transport
+        security or tool permission. Agents require an actual permitted communication channel; the reference CLI implements file-based exchanges
+        only.
       SCP-PRIME-001: The human-readable part of this document, ending immediately before the unique semantic-appendix delimiter, is the sole canonical
         HPX-SCP policy. The appended semantic projection, schemas, validator, records, and summaries are subordinate. Conflicts are reported and
         settled in favour of canonical text.
@@ -221,21 +293,58 @@ HPX-SCP:
         complete appendix, or embedded source-section text into the normal agent prompt.
       SCP-CONTEXT-003: Where a task depends on additional rules, the agent MUST request another verified scope/record packet or inspect explicit
         approved HPX task sources. Context minimisation MUST NOT conceal contradictions, dependencies, authority, evidence, or safety constraints.
-      SCP-CONTEXT-004: Agent handoffs SHOULD exchange record IDs and changed facts/deltas rather than restating unchanged instructions. A recipient
-        MUST resolve references and verify versions and statuses before acting; IDs without accessible records are not sufficient context.
+      SCP-CONTEXT-004: YAML agent handoffs SHOULD exchange record IDs and changed facts/deltas rather than restating unchanged instructions. A
+        recipient MUST resolve references and verify versions and statuses before acting; IDs without accessible records are not sufficient context.
       SCP-CONTEXT-005: If verification fails, stop machine-protocol loading. An authorised maintainer may inspect canonical text outside the normal
         agent prompt and repair/rebuild; no machine-generated summary becomes the fallback authority.
       SCP-CONTEXT-007: Compaction or recovery does not guarantee previous instructions survived. Independently reverify and reload the current
         minimum sufficient packet at every recognised recovery boundary; never rely on remembered verification flags.
+      SCP-TASK-CONFLICT: When records conflict or required context is missing, retain the higher-authority source, surface an `issue`, and seek
+        appropriate review rather than guessing or silently replacing an approved requirement.
+      SCP-TASK-BOUNDARY: HPX-SCP is a bidirectional agent-prompting convention, not HPX runtime architecture, not a tool permission grant, and
+        not a replacement for HPX specifications or repository restrictions.
       SCP-RECOVERY-001: Persistent repository guidance MUST point to verifier and recovery commands, not copy the full protocol. At session start,
         after known compaction, at session resumption, or when state is uncertain, load fresh verified semantic instructions before protocol-governed
         work.
       SCP-RECOVERY-005: Unverified or uncertain protocol state forbids consequential protocol-dependent repository mutations until revalidation
         and reconciliation. External write guards or CI are necessary for stronger enforcement; prompt instructions do not grant permissions.
-      SCP-TASK-CONFLICT: When records conflict or required context is missing, retain the higher-authority source, surface an `issue`, and seek
-        appropriate review rather than guessing or silently replacing an approved requirement.
-      SCP-TASK-BOUNDARY: HPX-SCP is an agent communication convention, not HPX runtime architecture, not a tool permission grant, and not a replacement
-        for HPX specifications or repository restrictions.
+    negotiation:
+      SCP-WIRE-TRIGGER: An agent instructed to use HPX-SCP with another agent MUST initiate protocol discovery even if the recipient is not known
+        to support HPX-SCP. It MUST NOT assume shared protocol knowledge or proceed with an ordinary HPX-SCP request before readiness is established.
+      SCP-NEG-001: The initiator sends a minimal YAML `hello` control message identifying its protocol version and a content fingerprint consumed
+        by the receiver's verifier outside ordinary agent context. The receiver checks its locally installed canonical protocol and replies `ready`
+        only after independent verification and exact protocol compatibility, otherwise `need` with a reason.
+      SCP-NEG-002: On `need`, the initiating agent MUST offer and transfer a verified protocol bundle containing the complete canonical Markdown,
+        appended semantic YAML and integrity manifest via the permitted transport, outside ordinary model context. The receiver stages and verifies
+        the bundle using independently trusted tooling; a received verifier MUST NOT be executed solely because the sender supplied it.
+      SCP-NEG-003: The receiver MUST NOT activate a new or divergent version merely because a received bundle passes self-consistency checks;
+        acceptance requires supported compatibility and existing owner/repository trust policy. If verification, installation or compatibility
+        fails, exchange `need` or `error` and refuse protocol-dependent tasks.
+      SCP-NEG-004: A `ready` acknowledgement establishes a conversation-local, version-specific protocol session only when the recipient has verified
+        the agreed protocol. The initiator must validate that readiness reply and bind it to the original `hello` before sending a task request.
+        A claimed `ready` does not independently authenticate the sender or guarantee model obedience.
+      SCP-NEG-005: Protocol upgrades during a session require renewed discovery and readiness. Agents MUST NOT silently invent a dialect, negotiate
+        incompatible meanings, downgrade authority, or substitute natural-language prompts after establishment.
+      SCP-NEG-006: Bootstrap `hello`, `ready` and `need` messages use the small fixed YAML envelope below even before full protocol agreement;
+        these are control messages, not authorisation to run user tasks.
+    exchange:
+      SCP-MSG-001: After readiness, every HPX-SCP-governed agent-to-agent prompt and response MUST be a single strict UTF-8 YAML mapping with
+        the required envelope fields `scp`, `version`, `kind`, `id`, `sender`, `recipient`, `conversation`, and `body`; `reply_to` and `refs`
+        are optional. The `body` MUST be a mapping, and `refs` a list of stable identifiers. No JSON, custom notation or free-form conversational
+        substitute is an HPX-SCP message.
+      SCP-MSG-002: Every message MUST be checked against the agreed version, registered kind, required body fields, identifiers and existing session
+        state before dispatch or use. Reject malformed YAML, duplicate keys, aliases, anchors, custom tags, unknown kinds, unsupported versions
+        or requests received before readiness.
+      SCP-MSG-003: Requests MUST express action, target and applicable references or constraints sufficiently for safe interpretation; responses
+        MUST reference the originating request and report truthful status, outcome, evidence references and unresolved issues as applicable. Clarifications
+        and errors MUST reference their triggering messages; use no invented proof of work.
+      SCP-MSG-004: Exchange the smallest sufficient YAML body and resolvable record/source references. Do not repeat the protocol, embedded canonical
+        prose, hashes or unchanged task history inside ordinary messages. If references cannot be resolved, ask for clarification or transfer
+        the referenced data through the permitted transport.
+      SCP-MSG-005: The peer may request additional verified protocol scopes without redefining the message grammar. Structured YAML is for inter-agent
+        messages; direct communication with humans remains ordinary natural language unless explicitly requested otherwise.
+      SCP-MSG-006: The sender and recipient MUST both validate outbound and inbound messages using their own verified protocol. A YAML message
+        is a structured claim, not proof of authorisation, execution, identity or delivery; provenance and actual tool evidence remain separate.
     records:
       SCP-RECORD-001: Persistent records are UTF-8 JSON with no duplicate keys, one object per `records/<id>.json`, validated against local Draft
         2020-12 JSON Schema. Sketches and ordinary discussion do not automatically become records.
@@ -288,9 +397,10 @@ HPX-SCP:
         sessions must reverify and reload before consuming amended vocabulary; checkpoint or notification is insufficient.
       SCP-BOOT-007: '`scripts/protocol_amendments.py` validates shared amendment index against current verified protocol version and indexed applied
         `protocol_change` records. Refuse duplicate, missing, divergent, or unindexed applied changes.'
-      SCP-BOOT-005: The prescribed maintenance sequence is `python3 scripts/rebuild_semantic_appendix.py`, `python3 scripts/protocol_amendments.py
-        sync`, `python3 scripts/bootstrap_semantic_protocol.py`, `python3 scripts/protocol_amendments.py validate`, `python3 scripts/validate_semantic_records.py`,
-        and `python3 -m unittest discover -s tests -p 'test_*.py'`; successful checks do not themselves constitute owner approval.
+      SCP-BOOT-005: The prescribed maintenance sequence includes the inter-agent message tests and is `python3 scripts/rebuild_semantic_appendix.py`,
+        `python3 scripts/protocol_amendments.py sync`, `python3 scripts/bootstrap_semantic_protocol.py`, `python3 scripts/protocol_amendments.py
+        validate`, `python3 scripts/validate_semantic_records.py`, and `python3 -m unittest discover -s tests -p 'test_*.py'`; successful checks
+        do not themselves constitute owner approval.
     recovery:
       SCP-RECOVERY-002: 'Persist a small per-session checkpoint outside model context before an expected interruption: objective, constraints,
         sourced decisions, evidence, blockers, changed files, record IDs and next action. Checkpoints are untrusted working claims, not authority;
@@ -322,14 +432,71 @@ HPX-SCP:
       SCP-BOOT-001: '`scripts/bootstrap_semantic_protocol.py` is the fail-closed independent preflight. It loads and checks canonical bytes without
         sending them into agent context. `scripts/protocol_context.py` may output a verified minimal semantic packet only after the preflight
         succeeds.'
-      SCP-BOOT-002: Default agent packet selection is `kernel` plus `baseline` and explicitly selected work scopes. A packet includes version,
-        verification status, requested scopes, and their applicable directives; optional record kinds or relationship definitions are included
-        only when asked for. Scope selection is a relevance filter, not a permissions or authority filter.
+      SCP-BOOT-002: Default agent packet selection is `kernel` plus `baseline` and explicitly selected work scopes; inter-agent sessions additionally
+        load `negotiation` during establishment and `exchange` for normal messages. A packet includes version, verification status, requested
+        scopes, and their applicable directives; optional record kinds or relationship definitions are included only when asked for. Scope selection
+        is a relevance filter, not a permissions or authority filter.
       SCP-BOOT-004: On a failed preflight, no semantic packets, schema-dependent agent workflows, or semantic record processing may proceed. Canonical
         prose may be repaired through an authorised maintenance workflow, outside ordinary agent context, then regenerated and reverified.
       SCP-BOOT-008: The canonical semantic appendix and ordinary agent packets use a restricted, deterministic YAML subset (UTF-8, indentation,
         mappings/sequences/scalars; no duplicate keys, anchors, aliases, custom tags, or merge keys). Historical JSON records and schemas remain
         valid; the context loader may emit JSON only for explicitly requesting legacy consumers.
+  message_envelope:
+    scp: Constant `HPX-SCP`.
+    version: Negotiated semantic protocol version.
+    kind: One registered message kind from the table below.
+    id: Stable unique message identifier within its conversation.
+    sender: Claimed sending agent identity; transport authentication is separate.
+    recipient: Intended receiving agent identity.
+    conversation: Shared conversation/session identifier.
+    body: Kind-specific mapping containing minimum sufficient information.
+    reply_to: Optional prior message ID for replies; required for replies to requests or control messages.
+    refs: Optional list of accessible stable record/source references.
+  message_types:
+    hello:
+      required:
+      - fingerprint
+      meaning: Bootstrap discovery; content fingerprint is checked outside ordinary agent context.
+    ready:
+      required:
+      - accepted_version
+      meaning: Recipient has verified the offered protocol and is ready for YAML exchange.
+    need:
+      required:
+      - reason
+      meaning: Recipient lacks a verified compatible protocol or needs external installation.
+    offer:
+      required:
+      - bundle_ref
+      meaning: Location/identifier for a separately transmitted complete protocol bundle.
+    request:
+      required:
+      - action
+      - target
+      meaning: Prompt assigning a task or requesting an operation.
+    response:
+      required:
+      - status
+      meaning: Result linked to a request; allowed statuses are `completed`, `partial`, `failed`, `blocked`.
+    clarification:
+      required:
+      - question
+      meaning: Targeted question about a prior message.
+    error:
+      required:
+      - code
+      - explanation
+      meaning: Explicit rejection or processing failure.
+    handoff:
+      required:
+      - objective
+      - next_action
+      meaning: Minimal durable transfer of work state and source references.
+    amendment_notice:
+      required:
+      - amendment_id
+      - version
+      meaning: Notify peers about a published, verified shared protocol amendment.
   record_envelope:
     protocol_version: Declared interpretation version, including supported legacy versions
     record_version: Monotonically increasing integer, starting at 1
@@ -459,6 +626,6 @@ HPX-SCP:
 ```
 <!-- HPX-SCP:INTEGRITY-MANIFEST-BEGIN v4 -->
 ```yaml
-natural_sha256: 40f4ad117b24487ed9b6e29400568558cec6b148d16188f04c4ec00add0cfd56
-machine_sha256: 6f8dd44e58fefb10b5d471e17acc1c453332314660083d288d9d45b3f0d214b1
+natural_sha256: db86a5895aecc7f241fed033e4e0547bd7422d22c5135b586532a70239cac725
+machine_sha256: 6c24ea928b9674f643e2772a9fa5500493b1bebdb5e0a686748fd14c9458fab1
 ```

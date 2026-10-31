@@ -26,7 +26,7 @@ CLOSE_FENCE = b'\n```\n'
 RULE_PATTERN = re.compile(r'^\*\*(SCP-[A-Z0-9-]+) \[([a-z]+)\]:\*\* (.+)$')
 HEADING_PATTERN = re.compile(r'^(#{1,4}) (.+)$')
 VERSION_PATTERN = re.compile(r'^\*\*Version:\*\* (\d+\.\d+\.\d+)\s*$', re.M)
-SCOPES = {'kernel', 'baseline', 'records', 'plan', 'implement', 'verify', 'handoff', 'amend', 'preflight', 'recovery'}
+SCOPES = {'kernel', 'baseline', 'negotiation', 'exchange', 'records', 'plan', 'implement', 'verify', 'handoff', 'amend', 'preflight', 'recovery'}
 
 class BootstrapError(ValueError):
     """Canonical/semantic pair is invalid; do not load any semantic packet."""
@@ -84,7 +84,7 @@ def yaml_bytes(value: dict) -> bytes:
 
 def machine_from_projection(projection: dict) -> dict:
     """A concise, indented, self-describing semantic form, generated solely from canonical prose."""
-    ordered_scopes = ['kernel', 'baseline', 'records', 'plan', 'implement', 'verify',
+    ordered_scopes = ['kernel', 'baseline', 'negotiation', 'exchange', 'records', 'plan', 'implement', 'verify',
                       'handoff', 'amend', 'recovery', 'preflight']
     scopes = {}
     for scope in ordered_scopes:
@@ -97,6 +97,8 @@ def machine_from_projection(projection: dict) -> dict:
             'format': FORMAT_VERSION,
             'authority': projection['authority'],
             'scopes': scopes,
+            'message_envelope': {e['name']: e['meaning'] for e in projection['message_envelope']},
+            'message_types': {t['kind']: {'required': t['required_body'], 'meaning': t['meaning']} for t in projection['message_types']},
             'record_envelope': {e['name']: e['meaning'] for e in projection['envelope_fields']},
             'record_types': {t['kind']: {
                 'statuses': t['statuses'],
@@ -183,27 +185,39 @@ def semantic_projection(natural: bytes) -> dict:
         if title in source_sections:
             raise BootstrapError('duplicate section title: ' + title)
         source_sections[title] = chunk.decode('utf-8')
-    required_sections = {'3.1 Required record envelope', '3.2 Record kinds', '3.3 Relationships', '5.1 Change classes'}
+    required_sections = {'1.2 Message envelope fields', '1.3 Message kinds', '5.1 Required record envelope', '5.2 Record kinds', '5.3 Relationships', '7.1 Change classes'}
     if not required_sections.issubset(source_sections):
         raise BootstrapError('missing typed vocabulary sections')
+    message_envelope = []
+    for field, meaning in parse_table(source_sections['1.2 Message envelope fields'], ('Field', 'Meaning')):
+        if not re.fullmatch(r'`[a-z_]+`', field):
+            raise BootstrapError('invalid message envelope field')
+        message_envelope.append({'name': field[1:-1], 'meaning': meaning})
+    message_types = []
+    for kind, required, meaning in parse_table(source_sections['1.3 Message kinds'], ('Kind', 'Required body', 'Meaning')):
+        if not re.fullmatch(r'`[a-z_]+`', kind):
+            raise BootstrapError('invalid message kind')
+        message_types.append({'kind': kind[1:-1], 'required_body': re.findall(r'`([^`]+)`', required), 'meaning': meaning})
+    if len(message_envelope) != 10 or len(message_types) < 9 or len({e['kind'] for e in message_types}) != len(message_types):
+        raise BootstrapError('incomplete or duplicate message vocabulary')
     envelope = []
-    for field, meaning in parse_table(source_sections['3.1 Required record envelope'], ('Field', 'Meaning')):
+    for field, meaning in parse_table(source_sections['5.1 Required record envelope'], ('Field', 'Meaning')):
         if not field.startswith('`') or not field.endswith('`'):
             raise BootstrapError('invalid envelope field marker')
         envelope.append({'name': field[1:-1], 'meaning': meaning})
     record_kinds = []
-    for kind, statuses, required, meaning in parse_table(source_sections['3.2 Record kinds'], ('Kind', 'Statuses', 'Required content', 'Meaning')):
+    for kind, statuses, required, meaning in parse_table(source_sections['5.2 Record kinds'], ('Kind', 'Statuses', 'Required content', 'Meaning')):
         if not re.fullmatch(r'`[a-z_]+`', kind):
             raise BootstrapError('invalid record kind identifier')
         record_kinds.append({'kind': kind[1:-1], 'statuses': re.findall(r'`([^`]+)`', statuses),
                              'required_content_fields': re.findall(r'`([^`]+)`', required), 'meaning': meaning})
     relationships = []
-    for line in source_sections['3.3 Relationships'].splitlines():
+    for line in source_sections['5.3 Relationships'].splitlines():
         m = re.fullmatch(r'- `([a-z_]+)`: (.+)', line)
         if m:
             relationships.append({'name': m.group(1), 'meaning': m.group(2)})
     classes = []
-    for kind, examples, activation in parse_table(source_sections['5.1 Change classes'], ('Class', 'Examples', 'Activation')):
+    for kind, examples, activation in parse_table(source_sections['7.1 Change classes'], ('Class', 'Examples', 'Activation')):
         if not re.fullmatch(r'\*\*[A-Za-z]+\*\*', kind):
             raise BootstrapError('invalid amendment class')
         classes.append({'name': kind.strip('*').lower(), 'examples': examples, 'activation': activation})
@@ -217,6 +231,8 @@ def semantic_projection(natural: bytes) -> dict:
         'protocol_version': v.group(1),
         'authority': 'canonical_natural_language_only',
         'rules': rules,
+        'message_envelope': message_envelope,
+        'message_types': message_types,
         'envelope_fields': envelope,
         'record_types': record_kinds,
         'relationship_types': relationships,

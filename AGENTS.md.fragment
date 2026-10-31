@@ -1,26 +1,13 @@
-## HPX-SCP v0.5: Minimum Sufficient Protocol
+## Hypergraph PX Semantic Communication Protocol (HPX-SCP) v0.6.0
 
-The human-readable portion of `docs/engineering/semantic-protocol/PROTOCOL.md` is **canonical, not an agent prompt**. Do not insert it or the complete semantic appendix into model context. Retrieve only a verified, task-specific semantic packet through the standalone verifier:
+**Purpose: bidirectional inter-agent prompting.** When instructed to use HPX-SCP with another agent, establish a shared verified protocol first; do not assume the peer already knows it. When compatible, exchange **all subsequent SCP-governed agent requests, answers, clarifications and handoffs as validated YAML in both directions**. Humans may continue communicating in natural language.
 
-```bash
-python3 scripts/protocol_context.py --for implement
-# For an implementation record:
-python3 scripts/protocol_context.py --for implement --record-type implementation_evidence
-# For protocol amendments:
-python3 scripts/protocol_context.py --for amend --for records --record-type protocol_change
-```
+- Verify outside model context: `python3 scripts/bootstrap_semantic_protocol.py`.
+- Load only the needed machine instructions: `python3 scripts/protocol_context.py --for negotiation`, then `--for exchange --message-kind request` (or another kind).
+- If the peer is not ready, offer and transfer the complete verified canonical protocol *out of ordinary model context* using `python3 scripts/scp_wire.py bundle --output <path>` and an authorised channel. The receiver requires independent trusted verification/installation before responding `ready`.
+- Use `scripts/scp_wire.py` to create/answer `hello`, confirm `ready`, and validate each outgoing/incoming YAML message. Refuse normal task exchange before readiness or when protocols diverge. The reference tool operates on files and does not provide agent invocation or network transport.
+- Use minimum sufficient message bodies and resolvable record IDs; never paste full prose specifications, SHA-256 values or whole semantic appendices into ordinary task prompts. No invented evidence or authority.
+- After compaction/resumption, reverify and reload; reconcile checkpoints against repository state. If verifier fails, no SCP communication until repaired.
+- Agents may apply only tested backward-compatible protocol extensions under existing permissions. Edit canonical prose first, regenerate semantic YAML, verify, record and publish; breaking, governance, kernel or security changes require owner approval.
 
-Every emitted packet includes `kernel` and `baseline`. Add further scopes when needed (`plan`, `implement`, `verify`, `handoff`, `records`, `amend`, `preflight` (verifier maintenance only)). The verifier checks the two region SHA-256 digests, deterministic machine projection correspondence, and framing **outside the language-model context**. Never load unverified semantic material or use the canonical prose as normal prompting fallback; on failure, stop protocol-driven work and request authorised repair. Avoid loading unrelated records; link them by stable IDs and resolve when necessary. Ordinary dialogue need not become a formal record.
-
-Only the natural-language policy can be edited as a normative source. Compatible amendments may be applied by agents within standing delegation after canonical-text editing, deterministic regeneration, and tests. Breaking, authority, kernel, security, and governance amendments require owner approval. Do not fabricate authority, permission, implementation evidence, or test results. The protocol grants no additional machine permissions and does not supersede HPX requirements.
-
-For a permitted maintenance change:
-
-```bash
-python3 scripts/rebuild_semantic_appendix.py
-python3 scripts/bootstrap_semantic_protocol.py
-python3 scripts/validate_semantic_records.py
-python3 -m unittest discover -s tests -p 'test_*.py'
-```
-
-After compaction or resume, recover via `python3 scripts/protocol_recovery.py recover --session <session-id> --for <scope>`, then reconcile saved state with the actual repository; checkpoints are non-authoritative. Every compatible, applied protocol extension must be integrated into the canonical prose and discoverable in the shared amendment registry.
+The canonical policy is `docs/engineering/semantic-protocol/PROTOCOL.md`; it is for humans and out-of-context verification, not normal agent prompting. The protocol does not change HPX product requirements or grant tool permissions.

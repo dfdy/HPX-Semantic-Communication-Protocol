@@ -1,92 +1,135 @@
 **In short:** HPX-SCP keeps people responsible for what the rules mean, tools responsible for checking their integrity, and agents focused on the minimum verified instructions they need.
 
-# HPX Minimum Sufficient Semantic Communication Protocol (HPX-msSCP)
+# Hypergraph PX Semantic Communication Protocol (HPX-SCP)
 
-**Clearer coordination between development agents, with less context to carry.**
+**A shared YAML language for agents to prompt each other clearly, with minimal context.**
 
-**Status:** v0.5.0 — adopted for HPX engineering communication by the project owner on 2026-10-31.  
-**Scope:** Coordination between agents developing Hypergraph PX (HPX), not HPX's runtime data model.
-
-## Adoption and authority
-
-HPX's owner explicitly adopted the installed v0.5.0 policy. Existing HPX specifications, owner decisions and narrower repository restrictions remain in force. Adoption grants no additional tool permissions, product-design acceptance or publication authority. Other projects must make their own adoption decision; installing or verifying the kit alone is not approval.
+**Version:** 0.6.0 · **Status:** proposed integration package; not installed in HPX.
 
 ## Why it exists
 
-HPX is being developed by agents that plan, implement, review and hand work to one another. Passing entire specifications or long conversations between them consumes context, repeats information and leaves room for different interpretations. When an agent's context is compacted, important instructions may also be lost or distorted.
+Development agents often pass one another long prompts, recreate context, or interpret the same instruction differently. HPX-SCP gives them a compact, shared way to **ask, answer, clarify, report and hand work off**. Once they have established the protocol, both agents send and receive structured YAML instead of repeatedly explaining their communication conventions.
 
-The **Hypergraph PX Semantic Communication Protocol (HPX-SCP)** gives agents a shared way to describe requirements, decisions, implementation evidence, verification, issues and handoffs. The goal is **minimum sufficient context**: use as little context as possible *without losing the instructions needed to do the work correctly*.
+The point is *inter-agent prompting*. Hash verification, record keeping, context recovery and agent-maintained amendments support that exchange; they are not substitutes for it.
 
 ## The idea in one minute
 
-**People maintain the canonical Markdown specification. Tools verify it. Agents receive only relevant, verified YAML.**
+1. **Discover:** An agent instructed to use HPX-SCP sends the other agent a small YAML `hello`. Why? It must not assume its partner already knows the protocol.
+2. **Propagate if needed:** If the recipient replies `need`, send the complete protocol as a separate bundle—not as a long language-model prompt. Why? A new partner needs the same definitions before receiving an SCP task.
+3. **Verify and agree:** The recipient uses independently trusted tools to check the human-canonical Markdown, its appended semantic YAML, two hashes and version. It replies `ready` only for a matching verified protocol. Why? Agreement about meaning matters more than matching syntax.
+4. **Prompt in both directions:** Agents exchange validated YAML `request`, `response`, `clarification`, `error`, `handoff` and `amendment_notice` messages. Why? Shared structures reduce interpretive and context overhead.
+5. **Recover and evolve:** Reload verified scopes after compaction; register compatible extensions in the shared protocol. Why? Collaboration must survive sessions and improve without creating private dialects.
 
 ```text
-PROTOCOL.md
-  canonical human-readable rules   <- people can inspect and amend them
-  appended semantic YAML           <- agents can consume them consistently
-  integrity manifest               <- detects unsynchronised changes
-         |
-         v
-independent bootstrap verifier     <- checks before agents trust the YAML
-  validates both SHA-256 hashes
-  checks deterministic YAML correspondence
-         |
-         v
-minimum sufficient YAML packet     <- only the rules needed for this task
-         |
-         v
-agent
+Agent A           permitted transport          Agent B
+  |-- hello ------------------------------->|
+  |<---------------------- ready / need ----|
+  |-- verified bundle (if needed) -------->|
+  |               [verify / install via trusted tooling]
+  |<------------------------------ ready ---|
+  |-- YAML request ------------------------>|
+  |<------------------------ YAML response -|
 ```
 
-**Why keep Markdown canonical?** The protocol governs how agents work, so its meaning must remain understandable and controllable by a person. YAML is a machine-oriented representation of those rules, not a competing authority.
+## What a message looks like
 
-**Why bootstrap?** An agent should not have to read the whole specification—or trust a potentially stale YAML appendix—just to begin work. A small verifier checks the two complete portions outside the model's context: one SHA-256 digest for the human-readable text, one for the YAML. It also checks that the YAML corresponds to the prose through deterministic regeneration. If verification fails, **no protocol packet is loaded**. The hashes themselves stay out of routine agent prompts.
+```yaml
+scp: HPX-SCP
+version: 0.6.0
+kind: request
+id: m-001
+sender: architect
+recipient: implementer
+conversation: dissertation-editor
+body:
+  action: implement
+  target: ClosedComposition
+  requirements: [REQ-031, REQ-042]
+  constraints: [preserve_revision_history]
+```
 
-**Why a tiny kernel?** The protocol needs enough fixed rules to know *who* an instruction belongs to, *which version* applies, *what has authority*, *whether it is valid*, and *how it may be amended*. Keeping these five concerns—identity, versioning, authority, validation and amendments—small avoids a circular dependency on the very protocol being checked.
+The reply is another YAML message with `kind: response`, a `reply_to: m-001` reference, and an outcome such as `status: completed`. The sender must not invent evidence or claim tests passed without running them.
 
-The hashes detect accidental divergence; they do not prove who authorised an edit. Repository permissions and review procedures still provide that protection.
+**Why YAML?** It retains the readable, indented form of a semantic sketch while allowing strict validation. YAML is the *required* inter-agent message format; historical durable records remain schema-validated JSON for backward compatibility.
 
-## Try it
+## Try a local two-agent exchange
 
-From the repository root, after installing the kit's dependencies:
+Requires Python 3, `PyYAML>=6,<7` and `jsonschema>=4.18,<5`.
+
+Run in the kit root. Treat `state-a` and `state-b` as separate agents' local state directories; the files stand in for any permitted communication channel.
 
 ```bash
-# Check both representations before trusting either one
+# 1. Verify the human-canonical specification and its YAML projection.
 python3 scripts/bootstrap_semantic_protocol.py
 
-# Load only the verified rules relevant to implementation
-python3 scripts/protocol_context.py --for implement
+# 2. Initiator creates hello.yaml (contains control-plane fingerprint).
+python3 scripts/scp_wire.py hello --sender architect --recipient implementer \
+  --conversation demo --state-dir state-a --output hello.yaml
 
-# Add a specific record contract when the task needs it
-python3 scripts/protocol_context.py --for implement --for records \
-  --record-type implementation_evidence
+# 3. Recipient checks its own protocol and creates ready.yaml (or need.yaml).
+python3 scripts/scp_wire.py answer-hello --local implementer \
+  --state-dir state-b --input hello.yaml --output ready.yaml
+
+# 4. Initiator accepts the reply; no normal task messages before this.
+python3 scripts/scp_wire.py accept-ready --local architect \
+  --state-dir state-a --input ready.yaml
+
+# 5. Prepare a YAML body: action: implement, target: ClosedComposition.
+printf 'action: implement\ntarget: ClosedComposition\n' > request-body.yaml
+
+python3 scripts/scp_wire.py send --kind request --sender architect \
+  --recipient implementer --conversation demo --state-dir state-a \
+  --body-file request-body.yaml --output request.yaml
+python3 scripts/scp_wire.py receive --local implementer \
+  --state-dir state-b --input request.yaml
 ```
 
-The repository's `AGENTS.md` should point to these commands rather than reproduce the specification. **Why?** Duplicated instructions waste tokens and can become outdated. An agent can request more verified scopes when needed; smaller context must never mean omitting an applicable constraint.
+The recipient now reads the validated `request.yaml` and performs its authorised work. To respond, use `scp_wire.py send --kind response --reply-to <request-id>` from `state-b`, then `receive` from `state-a`. These commands validate the **messages**, not execution of the task.
 
-## What agents exchange
+**If the recipient does not know HPX-SCP:** the sender must transfer a protocol bundle through its permitted channel:
 
-Durable records describe `requirement`, `proposal`, `decision`, `implementation_evidence`, `verification_result`, `issue`, `handoff` and `protocol_change`. Each has a stable identity, declared authority and typed relationships. **Why?** Agents can refer to the same decision or test evidence without repeatedly summarising it, and they can distinguish an approved requirement from a suggestion or an observation.
+```bash
+python3 scripts/scp_wire.py bundle --output scp-protocol.zip
+# If a 'need' was received, set NEED_MESSAGE_ID to its YAML id,
+# then create an offer linked to that message:
+python3 scripts/scp_wire.py offer --sender architect --recipient implementer \
+  --conversation demo --reply-to "$NEED_MESSAGE_ID" \
+  --bundle-ref scp-protocol.zip --output offer.yaml
+# Send offer.yaml and scp-protocol.zip over the permitted channel.
+# Receiver (with independently trusted verifier installed) stages the bundle:
+python3 scripts/scp_wire.py inspect-bundle --input scp-protocol.zip \
+  --stage-dir staged-protocol
+```
 
-**YAML is the standard format for semantic instructions and agent packets** because it is structured and easy to inspect. Existing durable records remain supported as schema-validated JSON for compatibility; JSON is not an alternative protocol-instruction format.
+Staging verifies consistency **without automatically activating** a new or mismatched protocol. Existing owner/repository trust policies still determine installation and compatibility. If the recipient lacks any trusted verifier, installation must happen through an authorised process before it can respond `ready`. The CLI is a file-based reference implementation, **not a network transport, an agent launcher or an identity-authentication system**.
 
-## Keeping the protocol current
+## Human oversight without wasting context
 
-Agents may introduce **small, backward-compatible extensions** when the existing vocabulary is insufficient. They must first amend the canonical prose, regenerate the YAML and integrity manifest, run checks, record the amendment and publish it to the shared amendment registry.
+`docs/engineering/semantic-protocol/PROTOCOL.md` has three parts: **canonical human-readable Markdown**, an appended machine-readable YAML projection, and an integrity manifest containing exactly two SHA-256 digests. A standalone verifier checks them *outside* the agent's context and rejects a mismatch or semantic divergence. Why? Agents need dependable shared rules without carrying the entire policy or its hashes in each prompt.
 
-**Why allow this?** Agents encounter communication needs that the original designers may not anticipate. **Why require a shared registry?** Without it, different agents could silently develop incompatible local conventions. Changes to established meanings, security, approval rules, the bootstrap kernel or human-readable canonicality still require **explicit owner approval**; the protocol never grants additional tool or repository permissions.
+```bash
+# Emit only the verified YAML rules and message contract needed to communicate:
+python3 scripts/protocol_context.py --for negotiation
+python3 scripts/protocol_context.py --for exchange --message-kind request
+python3 scripts/protocol_context.py --for exchange --message-kind response
+```
 
-## Surviving context compaction
+The compact bootstrap kernel governs identity, version, authority, validation and amendment. Repository `AGENTS.md` should point to the commands above, not paste the full specification into every session.
 
-After context compaction or session recovery, agents reverify the protocol, reload the relevant YAML packet and reconcile their task state with persistent evidence. A compact handoff helps recover progress but does not replace authoritative records.
+## Continuity and improvement
 
-**Why?** Conversation summaries are useful working memory, not a reliable source of governing instructions. Recovery must work even when the agent cannot remember the previous session accurately.
+Agents must reverify protocol state and reload scoped YAML after recognised compaction or session resumption. Saved handoffs are working notes, not authority. Why? Summaries can discard governing details.
+
+Agents may add **compatible** message kinds, optional fields and relationships when real communication needs arise. They update the canonical Markdown first, regenerate the YAML and both hashes, test the change and register it for all peers. **Breaking changes and changes to authority, security, the bootstrap kernel or human canonicality require owner approval.** Why? The communication language should improve through use without splitting into incompatible private variants.
 
 ## Where to look
 
-- [`docs/engineering/semantic-protocol/PROTOCOL.md`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/blob/main/docs/engineering/semantic-protocol/PROTOCOL.md) — the source of authority: Markdown rules, YAML appendix and integrity manifest.
-- [`AGENTS.md.fragment`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/blob/main/AGENTS.md.fragment) — the short entry point for repository agents, avoiding pasted protocol text.
-- [`scripts/`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/tree/main/scripts) — verification, scoped loading, recovery, amendments and validation outside model context.
-- [`tests/`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/tree/main/tests) — checks that changes do not silently break integrity or compatibility.
-- [`CHANGELOG.md`](https://github.com/dfdy/HPX-Semantic-Communication-Protocol/blob/main/CHANGELOG.md) — why and how the protocol has evolved.
+- `docs/engineering/semantic-protocol/PROTOCOL.md` — authoritative rules, generated YAML and two-hash integrity manifest.
+- `scripts/scp_wire.py` — discovery, readiness, protocol-bundle transfer and bidirectional YAML message checks.
+- `scripts/protocol_context.py` — minimal verified YAML instructions for a task or message kind.
+- `scripts/bootstrap_semantic_protocol.py` — fail-closed verification performed outside model context.
+- `scripts/protocol_recovery.py` and `scripts/protocol_amendments.py` — continuity and controlled evolution.
+- `AGENTS.md.fragment` — short instructions to merge into the repo's agent guidance.
+- `tests/` — old-record compatibility, integrity, handshake, negotiation and exchange tests.
+
+**Adoption:** This is a proposed repository kit, not an alteration to a live HPX checkout. Review it, merge the agent guidance without replacing existing project authority, and run `python3 -m unittest discover -s tests -p 'test_*.py'` before adoption.
